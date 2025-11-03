@@ -5,7 +5,12 @@
   "workspaceFolder": "/workspace",
   "containerEnv": {
     "GITHUB_TOKEN": "${localEnv:GITHUB_TOKEN}",
-    "GITHUB_USER": "${localEnv:GITHUB_USER}"
+    "GITHUB_USER": "${localEnv:GITHUB_USER}",
+    "POSTGRES_USER": "maybe_user",
+    "POSTGRES_PASSWORD": "maybe_password",
+    "POSTGRES_DB": "maybe_production",
+    "DB_HOST": "db",
+    "DB_PORT": "5432"
   },
   "remoteEnv": {
     "PATH": "/workspace/bin:${containerEnv:PATH}"

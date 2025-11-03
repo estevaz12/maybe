@@ -52,12 +52,16 @@ services:
     volumes:
       - redis-data:/data
   db:
-    image: postgres:latest
+    image: postgres:16
     restart: unless-stopped
     volumes:
       - postgres-data:/var/lib/postgresql/data
     environment:
-      <<: *db_env
+      POSTGRES_USER: maybe_user
+      POSTGRES_PASSWORD: maybe_password
+      POSTGRES_DB: maybe_production
+    # environment:
+    #   <<: *db_env
     ports:
       - "5432:5432"
 
