@@ -13,6 +13,7 @@ on:
       - 'v*'
     branches:
       - main
+      - dev
 
 env:
   REGISTRY: ghcr.io

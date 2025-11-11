@@ -45,7 +45,7 @@ x-rails-env: &rails_env
 
 services:
   web:
-    image: ghcr.io/estevaz12/maybe:latest
+    image: ghcr.io/estevaz12/maybe:dev
     volumes:
       - app-storage:/rails/storage
     ports:
@@ -62,7 +62,7 @@ services:
       - maybe_net
 
   worker:
-    image: ghcr.io/estevaz12/maybe:latest
+    image: ghcr.io/estevaz12/maybe:dev
     volumes:
       - app-storage:/rails/storage
     command: bundle exec sidekiq
