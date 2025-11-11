@@ -87,6 +87,7 @@ jobs:
           build-args: BUILD_COMMIT_SHA=${{ github.sha }}
 
   deploy:
+    name: Deploy to Coolify
     needs: [build]
     runs-on: ubuntu-latest
 
