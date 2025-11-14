@@ -49,7 +49,7 @@ services:
     volumes:
       - app-storage:/rails/storage
     ports:
-      - 3000:3000
+      - 3001:3001
     restart: unless-stopped
     environment:
       <<: *rails_env
