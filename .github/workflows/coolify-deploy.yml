@@ -1,0 +1,68 @@
+# Auto-deploys based on branch:
+#   - main → production
+#   - dev  → staging
+#
+
+name: "Coolify Deployment"
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  workflow_dispatch: # still allow manual trigger
+
+env:
+  # Environment-specific Coolify variables from repository variables/secrets
+  COOLIFY_URL: ${{secrets.COOLIFY_WEBHOOK}}
+  # COOLIFY_URL: >-
+  #   ${{ github.ref_name == 'main'
+  #       && vars.COOLIFY_PRODUCTION_URL
+  #       || vars.COOLIFY_STAGING_URL }}
+
+  COOLIFY_RESOURCE_ID: >-
+    ${{ github.ref_name == 'main'
+        && vars.COOLIFY_PRODUCTION_RESOURCE_ID
+        || vars.COOLIFY_STAGING_RESOURCE_ID }}
+
+  COOLIFY_API_TOKEN: ${{secrets.COOLIFY_TOKEN}}
+  # COOLIFY_API_TOKEN: >-
+  #   ${{ github.ref_name == 'main'
+  #       && secrets.COOLIFY_PRODUCTION_API_TOKEN
+  #       || secrets.COOLIFY_STAGING_API_TOKEN }}
+
+jobs:
+  build:
+    uses: ./.github/workflows/publish.yml
+
+  coolify-deployment:
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+      # Validate Coolify URL (must not end with '/')
+      - name: Validate variables
+        env:
+          COOLIFY_URL: ${{ env.COOLIFY_URL }}
+        run: |
+          echo "Validating that COOLIFY_URL doesn't end in '/'"
+          echo "$COOLIFY_URL" | grep -P '[^/]$'
+
+      # Update commit SHA in Coolify
+      - name: Update source commit SHA in Coolify
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: ${{ env.COOLIFY_URL }}/api/v1/applications/${{ env.COOLIFY_RESOURCE_ID }}
+          method: PATCH
+          bearerToken: ${{ env.COOLIFY_API_TOKEN }}
+          data: >-
+            {
+              "git_commit_sha": "${{ github.sha }}"
+            }
+
+      # Trigger deployment
+      - name: Trigger Coolify deployment via webhook
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: ${{ env.COOLIFY_URL }}/api/v1/deploy?uuid=${{ env.COOLIFY_RESOURCE_ID }}&force=false
+          method: GET
+          bearerToken: ${{ env.COOLIFY_API_TOKEN }}

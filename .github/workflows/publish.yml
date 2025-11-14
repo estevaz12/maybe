@@ -85,16 +85,3 @@ jobs:
           # https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry#adding-a-description-to-multi-arch-images
           outputs: type=image,name=target,annotation-index.org.opencontainers.image.description=A multi-arch Docker image for the Maybe Rails app
           build-args: BUILD_COMMIT_SHA=${{ github.sha }}
-
-  deploy:
-    name: Deploy to Coolify
-    needs: [build]
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Trigger Coolify deployment via webhook
-        uses: fjogeleit/http-request-action@v1
-        with:
-          url: ${{secrets.COOLIFY_WEBHOOK}}/api/v1/deploy?uuid=${{secrets.COOLIFY_DEV_ID}}&force=false
-          method: GET
-          bearerToken: ${{secrets.COOLIFY_TOKEN}}
