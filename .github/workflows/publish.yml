@@ -2,19 +2,19 @@ name: Publish Docker image
 
 on:
   workflow_call:
-  workflow_dispatch:
-    inputs:
-      ref:
-        description: "Git ref (tag or commit SHA) to build"
-        required: true
-        type: string
-        default: "main"
-  push:
-    tags:
-      - "v*"
-    branches:
-      - main
-      - dev
+  # workflow_dispatch:
+  #   inputs:
+  #     ref:
+  #       description: "Git ref (tag or commit SHA) to build"
+  #       required: true
+  #       type: string
+  #       default: "main"
+  # push:
+  #   tags:
+  #     - "v*"
+  #   branches:
+  #     - main
+  #     - dev
 
 env:
   REGISTRY: ghcr.io
