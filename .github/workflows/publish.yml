@@ -92,6 +92,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Notify Coolify
-        run: |
-          curl --request GET '${{ secrets.COOLIFY_WEBHOOK }}' --header 'Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}'
+      - name: Trigger Coolify deployment via webhook
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: ${{secrets.COOLIFY_WEBHOOK}}/api/v1/deploy?uuid=${{secrets.COOLIFY_DEV_ID}}&force=false
+          method: GET
+          bearerToken: ${{secrets.COOLIFY_TOKEN}}
