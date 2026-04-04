@@ -1,0 +1,20 @@
+<% if lines.any? %>
+  <table class="w-full text-sm mt-2">
+    <thead>
+      <tr class="text-left text-secondary border-b border-primary">
+        <th class="py-1 pr-2">Category</th>
+        <th class="py-1 text-right">Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% lines.each do |line| %>
+        <tr class="border-b border-primary/50">
+          <td class="py-1 pr-2 text-primary"><%= line.category_name %></td>
+          <td class="py-1 text-right text-primary"><%= Money.new(line.total, Current.family.currency).format %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+<% else %>
+  <p class="text-sm text-secondary mt-2">No leaf spending in this bucket for this month.</p>
+<% end %>

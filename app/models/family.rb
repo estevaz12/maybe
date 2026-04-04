@@ -33,6 +33,9 @@ class Family < ApplicationRecord
   has_many :budgets, dependent: :destroy
   has_many :budget_categories, through: :budgets
 
+  has_one :family_monthly_planning_setting, class_name: "FamilyMonthlyPlanningSetting", dependent: :destroy
+  has_many :monthly_planning_snapshots, dependent: :destroy
+
   validates :locale, inclusion: { in: I18n.available_locales.map(&:to_s) }
   validates :date_format, inclusion: { in: DATE_FORMATS.map(&:last) }
 

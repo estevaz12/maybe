@@ -1,0 +1,60 @@
+<% title "Monthly planning snapshot" %>
+
+<div class="max-w-3xl mx-auto space-y-8 pb-16 px-3">
+  <header class="space-y-2">
+    <p class="text-sm text-secondary">
+      <%= link_to "← Back to monthly planning", monthly_planning_path(Budget.date_to_param(@snapshot.reference_month)), class: "text-link" %>
+    </p>
+    <h1 class="text-2xl font-medium text-primary">Saved snapshot</h1>
+    <p class="text-sm text-secondary">
+      Reference month: <span class="text-primary font-medium"><%= @snapshot.reference_month.strftime("%B %Y") %></span>
+      · Saved <%= @snapshot.created_at.strftime("%Y-%m-%d %H:%M") %>
+    </p>
+  </header>
+
+  <section class="bg-container border border-primary rounded-xl p-4 shadow-border-xs space-y-3">
+    <h2 class="text-lg font-medium text-primary">Inputs</h2>
+    <% if @snapshot.inputs.blank? %>
+      <p class="text-sm text-secondary">No inputs recorded.</p>
+    <% else %>
+      <dl class="grid gap-2 text-sm text-primary">
+        <% @snapshot.inputs.sort_by { |k, _| k.to_s }.each do |key, value| %>
+          <div class="flex justify-between gap-4 border-b border-primary/50 pb-2">
+            <dt class="text-secondary"><%= key.to_s.humanize %></dt>
+            <dd class="text-right font-mono text-xs break-all"><%= value.is_a?(Hash) ? value.inspect : value %></dd>
+          </div>
+        <% end %>
+      </dl>
+    <% end %>
+  </section>
+
+  <section class="bg-container border border-primary rounded-xl p-4 shadow-border-xs space-y-3">
+    <h2 class="text-lg font-medium text-primary">Computed outputs</h2>
+    <% if @snapshot.outputs.blank? %>
+      <p class="text-sm text-secondary">No outputs recorded.</p>
+    <% else %>
+      <dl class="grid gap-2 text-sm text-primary">
+        <% @snapshot.outputs.except("tiered_breakdown").sort_by { |k, _| k.to_s }.each do |key, value| %>
+          <div class="flex justify-between gap-4 border-b border-primary/50 pb-2">
+            <dt class="text-secondary"><%= key.to_s.humanize %></dt>
+            <dd class="text-right"><%= value %></dd>
+          </div>
+        <% end %>
+      </dl>
+      <% tiered = @snapshot.outputs["tiered_breakdown"] %>
+      <% if tiered.present? %>
+        <div class="mt-4 border border-primary rounded-lg p-3 text-sm text-primary">
+          <p class="font-medium mb-2">Tiered breakdown</p>
+          <dl class="grid gap-1">
+            <% tiered.each do |k, v| %>
+              <div class="flex justify-between gap-4">
+                <dt class="text-secondary"><%= k.to_s.humanize %></dt>
+                <dd><%= v %></dd>
+              </div>
+            <% end %>
+          </dl>
+        </div>
+      <% end %>
+    <% end %>
+  </section>
+</div>

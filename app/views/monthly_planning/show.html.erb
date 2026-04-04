@@ -1,0 +1,169 @@
+<% title "Monthly planning" %>
+
+<div class="max-w-5xl mx-auto space-y-8 pb-16 px-3">
+  <header class="space-y-2">
+    <h1 class="text-2xl font-medium text-primary">Monthly planning</h1>
+    <p class="text-sm text-secondary">
+      Review last month’s spending under your two category roots, then project next month using day-based run rates, inflation, and optional FX. Configure category roots in
+      <%= link_to "Categories", categories_path, class: "text-link" %> — create two parent expense categories and nest your spending categories under them.
+    </p>
+  </header>
+
+  <div class="flex items-center gap-2 flex-wrap">
+    <%= render DS::Link.new(variant: "icon", icon: "chevron-left", href: monthly_planning_path(Budget.date_to_param(@reference_month - 1.month))) %>
+    <%= render DS::Link.new(variant: "icon", icon: "chevron-right", href: monthly_planning_path(Budget.date_to_param(@reference_month + 1.month))) %>
+    <span class="text-lg font-medium text-primary">
+      <%= @reference_month.strftime("%B %Y") %>
+    </span>
+    <span class="text-sm text-secondary">
+      (Next month: <%= @next_month.strftime("%B %Y") %>)
+    </span>
+  </div>
+
+  <section class="bg-container border border-primary rounded-xl p-4 shadow-border-xs space-y-4">
+    <h2 class="text-lg font-medium text-primary">Planning roots</h2>
+    <p class="text-sm text-secondary">
+      Choose the two top-level expense categories that group your spending. Pick which root uses the run-rate formula; the other uses prior-month spend only.
+    </p>
+
+    <%= styled_form_with model: @setting,
+          url: monthly_planning_settings_path,
+          method: :patch,
+          class: "space-y-4" do |f| %>
+      <%= hidden_field_tag :month_year, Budget.date_to_param(@reference_month) %>
+      <div class="grid gap-4 md:grid-cols-3">
+        <div>
+          <%= f.label :first_root_category_id, "First root", class: "block text-sm font-medium text-primary mb-1" %>
+          <%= f.collection_select :first_root_category_id, @expense_roots, :id, :name,
+                { include_blank: "Select…" },
+                class: "w-full border border-primary rounded-lg bg-container text-primary px-3 py-2" %>
+        </div>
+        <div>
+          <%= f.label :second_root_category_id, "Second root", class: "block text-sm font-medium text-primary mb-1" %>
+          <%= f.collection_select :second_root_category_id, @expense_roots, :id, :name,
+                { include_blank: "Select…" },
+                class: "w-full border border-primary rounded-lg bg-container text-primary px-3 py-2" %>
+        </div>
+        <div>
+          <%= f.label :run_rate_root_category_id, "Run-rate root", class: "block text-sm font-medium text-primary mb-1" %>
+          <% run_rate_choices = [ @setting.first_root, @setting.second_root ].compact %>
+          <%= f.collection_select :run_rate_root_category_id, run_rate_choices, :id, :name,
+                { include_blank: "Select…" },
+                class: "w-full border border-primary rounded-lg bg-container text-primary px-3 py-2" %>
+          <p class="text-xs text-secondary mt-1">The other root uses prior-month total only.</p>
+        </div>
+      </div>
+      <%= f.submit "Save settings", class: "inline-flex items-center justify-center rounded-lg bg-inverse px-4 py-2 text-sm font-medium text-inverse" %>
+    <% end %>
+  </section>
+
+  <section class="bg-container border border-primary rounded-xl p-4 shadow-border-xs space-y-4">
+    <h2 class="text-lg font-medium text-primary">Reverse budget (actuals)</h2>
+    <% if @setting.first_root_category_id.blank? || @setting.second_root_category_id.blank? %>
+      <p class="text-sm text-secondary">Select both roots above to see totals.</p>
+    <% else %>
+      <div class="grid gap-6 md:grid-cols-2">
+        <div>
+          <h3 class="font-medium text-primary mb-2"><%= @setting.first_root&.name || "First root" %></h3>
+          <p class="text-2xl font-semibold text-primary"><%= Money.new(@report.first_root_total, Current.family.currency).format %></p>
+          <%= render "category_lines", lines: @report.first_root_lines %>
+        </div>
+        <div>
+          <h3 class="font-medium text-primary mb-2"><%= @setting.second_root&.name || "Second root" %></h3>
+          <p class="text-2xl font-semibold text-primary"><%= Money.new(@report.second_root_total, Current.family.currency).format %></p>
+          <%= render "category_lines", lines: @report.second_root_lines %>
+        </div>
+      </div>
+      <% if @report.outside_total.positive? %>
+        <div class="border border-warning rounded-lg p-3 bg-surface">
+          <p class="text-sm font-medium text-warning">Outside planning roots</p>
+          <p class="text-sm text-secondary"><%= Money.new(@report.outside_total, Current.family.currency).format %> — move these categories under your two roots in Categories.</p>
+          <%= render "category_lines", lines: @report.outside_lines %>
+        </div>
+      <% end %>
+    <% end %>
+  </section>
+
+  <% if @setting.run_rate_root_category_id.present? && @planner %>
+    <section class="bg-container border border-primary rounded-xl p-4 shadow-border-xs space-y-4">
+      <h2 class="text-lg font-medium text-primary">Next month projection</h2>
+      <p class="text-sm text-secondary">
+        Run-rate uses calendar days: (spend on run-rate root ÷ days in <%= @reference_month.strftime("%B") %>) × days in <%= @next_month.strftime("%B") %> × (1 + inflation).
+      </p>
+
+      <%= form_with url: monthly_planning_path(Budget.date_to_param(@reference_month)), method: :get, class: "space-y-4" do %>
+        <div class="grid gap-4 md:grid-cols-2">
+          <div>
+            <%= label_tag "planning[inflation_percent]", "Inflation (%)", class: "block text-sm font-medium text-primary mb-1" %>
+            <%= number_field_tag "planning[inflation_percent]", params.dig(:planning, :inflation_percent) || @planning_params[:inflation_percent], step: "any", class: "w-full border border-primary rounded-lg bg-container px-3 py-2 text-primary" %>
+          </div>
+          <div>
+            <%= label_tag "planning[simple_fx_rate]", "Simple FX (domestic per 1 target unit, optional)", class: "block text-sm font-medium text-primary mb-1" %>
+            <%= number_field_tag "planning[simple_fx_rate]", params.dig(:planning, :simple_fx_rate), step: "any", class: "w-full border border-primary rounded-lg bg-container px-3 py-2 text-primary" %>
+          </div>
+        </div>
+        <details class="text-sm">
+          <summary class="cursor-pointer text-link font-medium">Tiered FX (optional)</summary>
+          <div class="mt-3 grid gap-3 md:grid-cols-2">
+            <label class="inline-flex items-center gap-2 text-primary">
+              <%= check_box_tag "planning[tiered_enabled]", "1", params.dig(:planning, :tiered_enabled), class: "rounded border-primary" %>
+              Enable tiered conversion
+            </label>
+            <%= number_field_tag "planning[tier_first_amount_usd]", params.dig(:planning, :tier_first_amount_usd), placeholder: "Max USD at first rate", class: "border border-primary rounded-lg px-3 py-2 bg-container text-primary" %>
+            <%= number_field_tag "planning[tier_first_ars_per_usd]", params.dig(:planning, :tier_first_ars_per_usd), placeholder: "First rate (ARS per USD)", class: "border border-primary rounded-lg px-3 py-2 bg-container text-primary" %>
+            <%= number_field_tag "planning[tier_second_ars_per_usd]", params.dig(:planning, :tier_second_ars_per_usd), placeholder: "Second rate (ARS per USD)", class: "border border-primary rounded-lg px-3 py-2 bg-container text-primary" %>
+          </div>
+        </details>
+        <%= submit_tag "Apply inputs", class: "inline-flex items-center justify-center rounded-lg border border-primary px-4 py-2 text-sm font-medium text-primary" %>
+      <% end %>
+
+      <dl class="grid gap-2 text-sm text-primary border-t border-primary pt-4">
+        <div class="flex justify-between"><dt>Days in reference month</dt><dd><%= @planner.days_in_reference_month %></dd></div>
+        <div class="flex justify-between"><dt>Days in next month</dt><dd><%= @planner.days_in_next_month %></dd></div>
+        <div class="flex justify-between"><dt>Inflation multiplier</dt><dd><%= @planner.inflation_multiplier.round(4) %></dd></div>
+        <div class="flex justify-between"><dt>Projected run-rate spend</dt><dd><%= Money.new(@planner.projected_run_rate_spend, Current.family.currency).format %></dd></div>
+        <div class="flex justify-between"><dt>Prior-month other root</dt><dd><%= Money.new(@planner.spent_other_root, Current.family.currency).format %></dd></div>
+        <div class="flex justify-between font-semibold"><dt>Combined (domestic)</dt><dd><%= Money.new(@planner.combined_need_domestic, Current.family.currency).format %></dd></div>
+        <% if @planner.simple_fx_amount_target_currency %>
+          <div class="flex justify-between"><dt>Simple FX (target currency)</dt><dd><%= @planner.simple_fx_amount_target_currency.round(2) %></dd></div>
+        <% end %>
+      </dl>
+
+      <% if @planner.tiered_breakdown %>
+        <div class="text-sm text-primary space-y-1 border border-primary rounded-lg p-3">
+          <p class="font-medium">Tiered breakdown</p>
+          <p>First tier USD: <%= @planner.tiered_breakdown[:first_usd].round(2) %></p>
+          <p>Second tier USD: <%= @planner.tiered_breakdown[:second_usd].round(2) %></p>
+        </div>
+      <% end %>
+
+      <%= form_with url: monthly_planning_snapshots_path, method: :post, class: "pt-4 border-t border-primary" do %>
+        <%= hidden_field_tag :month_year, Budget.date_to_param(@reference_month) %>
+        <%= hidden_field_tag "planning[inflation_percent]", params.dig(:planning, :inflation_percent) || @planning_params[:inflation_percent] %>
+        <%= hidden_field_tag "planning[simple_fx_rate]", params.dig(:planning, :simple_fx_rate) %>
+        <%= hidden_field_tag "planning[tiered_enabled]", ActiveModel::Type::Boolean.new.cast(params.dig(:planning, :tiered_enabled)) ? "1" : "0" %>
+        <%= hidden_field_tag "planning[tier_first_amount_usd]", params.dig(:planning, :tier_first_amount_usd) %>
+        <%= hidden_field_tag "planning[tier_first_ars_per_usd]", params.dig(:planning, :tier_first_ars_per_usd) %>
+        <%= hidden_field_tag "planning[tier_second_ars_per_usd]", params.dig(:planning, :tier_second_ars_per_usd) %>
+        <%= submit_tag "Save snapshot", class: "inline-flex items-center justify-center rounded-lg bg-inverse px-4 py-2 text-sm font-medium text-inverse" %>
+      <% end %>
+    </section>
+  <% elsif @setting.first_root_category_id.present? && @setting.second_root_category_id.present? %>
+    <p class="text-sm text-secondary">Choose a run-rate root in settings to enable projections.</p>
+  <% end %>
+
+  <% if @snapshots.any? %>
+    <section class="bg-container border border-primary rounded-xl p-4 shadow-border-xs">
+      <h2 class="text-lg font-medium text-primary mb-3">Recent snapshots</h2>
+      <p class="text-sm text-secondary mb-3">Open a snapshot to review saved inputs and calculated outputs.</p>
+      <ul class="space-y-2 text-sm text-primary">
+        <% @snapshots.each do |snap| %>
+          <li class="flex justify-between gap-4 items-center">
+            <%= link_to snap.reference_month.strftime("%B %Y"), monthly_planning_snapshot_path(snap), class: "text-link font-medium" %>
+            <span class="text-secondary shrink-0"><%= snap.created_at.strftime("%Y-%m-%d %H:%M") %></span>
+          </li>
+        <% end %>
+      </ul>
+    </section>
+  <% end %>
+</div>

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2025_07_24_115507) do
+ActiveRecord::Schema[7.2].define(version: 2026_04_04_123125) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -278,6 +278,16 @@ ActiveRecord::Schema[7.2].define(version: 2025_07_24_115507) do
     t.index ["family_id"], name: "index_family_exports_on_family_id"
   end
 
+  create_table "family_monthly_planning_settings", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "family_id", null: false
+    t.uuid "first_root_category_id"
+    t.uuid "second_root_category_id"
+    t.uuid "run_rate_root_category_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["family_id"], name: "index_family_monthly_planning_settings_on_family_id", unique: true
+  end
+
   create_table "holdings", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "account_id", null: false
     t.uuid "security_id", null: false
@@ -468,6 +478,17 @@ ActiveRecord::Schema[7.2].define(version: 2025_07_24_115507) do
     t.index ["oauth_application_id"], name: "index_mobile_devices_on_oauth_application_id"
     t.index ["user_id", "device_id"], name: "index_mobile_devices_on_user_id_and_device_id", unique: true
     t.index ["user_id"], name: "index_mobile_devices_on_user_id"
+  end
+
+  create_table "monthly_planning_snapshots", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "family_id", null: false
+    t.date "reference_month", null: false
+    t.jsonb "inputs", default: {}, null: false
+    t.jsonb "outputs", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["family_id", "reference_month"], name: "idx_on_family_id_reference_month_7b9c0239ae"
+    t.index ["family_id"], name: "index_monthly_planning_snapshots_on_family_id"
   end
 
   create_table "oauth_access_grants", force: :cascade do |t|
@@ -839,6 +860,10 @@ ActiveRecord::Schema[7.2].define(version: 2025_07_24_115507) do
   add_foreign_key "entries", "accounts"
   add_foreign_key "entries", "imports"
   add_foreign_key "family_exports", "families"
+  add_foreign_key "family_monthly_planning_settings", "categories", column: "first_root_category_id"
+  add_foreign_key "family_monthly_planning_settings", "categories", column: "run_rate_root_category_id"
+  add_foreign_key "family_monthly_planning_settings", "categories", column: "second_root_category_id"
+  add_foreign_key "family_monthly_planning_settings", "families"
   add_foreign_key "holdings", "accounts"
   add_foreign_key "holdings", "securities"
   add_foreign_key "impersonation_session_logs", "impersonation_sessions"
@@ -851,6 +876,7 @@ ActiveRecord::Schema[7.2].define(version: 2025_07_24_115507) do
   add_foreign_key "merchants", "families"
   add_foreign_key "messages", "chats"
   add_foreign_key "mobile_devices", "users"
+  add_foreign_key "monthly_planning_snapshots", "families"
   add_foreign_key "oauth_access_grants", "oauth_applications", column: "application_id"
   add_foreign_key "oauth_access_tokens", "oauth_applications", column: "application_id"
   add_foreign_key "plaid_accounts", "plaid_items"

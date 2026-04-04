@@ -94,6 +94,13 @@ Rails.application.routes.draw do
     resources :budget_categories, only: %i[index show update]
   end
 
+  get "monthly-planning", to: "monthly_planning#show", as: :monthly_planning_root
+  get "monthly-planning/snapshots/:id", to: "monthly_planning#show_snapshot", as: :monthly_planning_snapshot
+  get "monthly-planning/:month_year", to: "monthly_planning#show", as: :monthly_planning,
+      constraints: { month_year: /[a-z]{3}-\d{4}/i }
+  patch "monthly-planning/settings", to: "monthly_planning#update_settings", as: :monthly_planning_settings
+  post "monthly-planning/snapshots", to: "monthly_planning#create_snapshot", as: :monthly_planning_snapshots
+
   resources :family_merchants, only: %i[index new create edit update destroy]
 
   resources :transfers, only: %i[new create destroy show update]
