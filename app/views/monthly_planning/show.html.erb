@@ -137,11 +137,11 @@
             } do %>
         <div class="grid gap-4 md:grid-cols-3">
           <div>
-            <%= label_tag "planning[inflation_percent]", "Expected price increase (%)", class: "block text-sm font-medium text-primary mb-1.5" %>
+            <%= label_tag "planning[inflation_percent]", "Expected inflation (%)", class: "block text-sm font-medium text-primary mb-1.5" %>
             <%= number_field_tag "planning[inflation_percent]", params.dig(:planning, :inflation_percent) || @planning_params[:inflation_percent], step: "any", class: "w-full border border-primary rounded-lg bg-container px-3 py-2 text-primary" %>
           </div>
           <div>
-            <%= label_tag "planning[previous_month_surplus]", "Money already covered (optional)", class: "block text-sm font-medium text-primary mb-1.5" %>
+            <%= label_tag "planning[previous_month_surplus]", "Previous month surplus", class: "block text-sm font-medium text-primary mb-1.5" %>
             <%= number_field_tag "planning[previous_month_surplus]", params.dig(:planning, :previous_month_surplus) || @planning_params[:previous_month_surplus], step: "any", min: "0", class: "w-full border border-primary rounded-lg bg-container px-3 py-2 text-primary" %>
             <p class="text-xs text-secondary mt-1.5">Reduces the projected pace amount (same currency as your accounts).</p>
           </div>
@@ -151,19 +151,49 @@
             <p class="text-xs text-secondary mt-1.5">Home currency per 1 unit of the currency you're converting to.</p>
           </div>
         </div>
-        <details class="rounded-lg border border-primary bg-container-inset">
-          <summary class="cursor-pointer px-4 py-3 text-sm font-medium text-link list-none">Advanced: tiered exchange rates</summary>
-          <div class="px-4 pb-4 pt-0 grid gap-3 md:grid-cols-2">
-            <label class="inline-flex items-center gap-2 text-sm text-primary md:col-span-2">
-              <%= check_box_tag "planning[tiered_enabled]", "1", params.dig(:planning, :tiered_enabled), class: "rounded border-primary" %>
-              Use two rates with a USD cap on the first rate
+        <details class="group rounded-lg border border-primary bg-container">
+          <summary class="cursor-pointer list-none px-4 py-3 flex items-center justify-between gap-2 text-sm font-medium text-primary">
+            <span>Advanced: tiered exchange rates</span>
+            <%= icon "chevron-down", size: "sm", class: "shrink-0 text-secondary group-open:transform group-open:rotate-180" %>
+          </summary>
+          <div class="px-4 pb-5 pt-3 space-y-5">
+            <label class="flex items-start gap-3 cursor-pointer">
+              <%= check_box_tag "planning[tiered_enabled]", "1", params.dig(:planning, :tiered_enabled), class: "rounded border-primary mt-0.5 shrink-0" %>
+              <span class="text-sm text-primary leading-snug">
+                Use two conversion rates: a cheaper rate up to a USD limit, then a second rate for the rest.
+              </span>
             </label>
-            <%= number_field_tag "planning[tier_first_amount_usd]", params.dig(:planning, :tier_first_amount_usd), placeholder: "Max USD at first rate", class: "border border-primary rounded-lg px-3 py-2 bg-container text-primary text-sm" %>
-            <%= number_field_tag "planning[tier_first_ars_per_usd]", params.dig(:planning, :tier_first_ars_per_usd), placeholder: "First rate (ARS per USD)", class: "border border-primary rounded-lg px-3 py-2 bg-container text-primary text-sm" %>
-            <%= number_field_tag "planning[tier_second_ars_per_usd]", params.dig(:planning, :tier_second_ars_per_usd), placeholder: "Second rate (ARS per USD)", class: "border border-primary rounded-lg px-3 py-2 bg-container text-primary text-sm md:col-span-2" %>
+
+            <div class="rounded-xl bg-container-inset border border-primary p-4 space-y-4">
+              <div>
+                <p class="text-xs font-medium text-secondary uppercase tracking-wide">First tier</p>
+                <p class="text-xs text-secondary mt-0.5">Applies to the domestic total until the USD cap is reached.</p>
+              </div>
+              <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <%= label_tag "planning[tier_first_amount_usd]", "USD cap (max at first rate)", class: "block text-sm font-medium text-primary mb-1.5" %>
+                  <%= number_field_tag "planning[tier_first_amount_usd]", params.dig(:planning, :tier_first_amount_usd), placeholder: "e.g. 200", step: "any", class: "w-full border border-primary rounded-lg px-3 py-2 bg-container text-primary text-sm" %>
+                </div>
+                <div>
+                  <%= label_tag "planning[tier_first_ars_per_usd]", "First rate (ARS per 1 USD)", class: "block text-sm font-medium text-primary mb-1.5" %>
+                  <%= number_field_tag "planning[tier_first_ars_per_usd]", params.dig(:planning, :tier_first_ars_per_usd), placeholder: "e.g. 1200", step: "any", class: "w-full border border-primary rounded-lg px-3 py-2 bg-container text-primary text-sm" %>
+                </div>
+              </div>
+            </div>
+
+            <div class="rounded-xl bg-container-inset border border-primary p-4 space-y-3">
+              <div>
+                <p class="text-xs font-medium text-secondary uppercase tracking-wide">Second tier</p>
+                <p class="text-xs text-secondary mt-0.5">Used for the domestic amount after the first tier is exhausted.</p>
+              </div>
+              <div>
+                <%= label_tag "planning[tier_second_ars_per_usd]", "Second rate (ARS per 1 USD)", class: "block text-sm font-medium text-primary mb-1.5" %>
+                <%= number_field_tag "planning[tier_second_ars_per_usd]", params.dig(:planning, :tier_second_ars_per_usd), placeholder: "e.g. 1400", step: "any", class: "w-full border border-primary rounded-lg px-3 py-2 bg-container text-primary text-sm sm:max-w-md" %>
+              </div>
+            </div>
           </div>
         </details>
-        <%= submit_tag "Apply & update URL", class: "inline-flex items-center justify-center rounded-lg border border-primary px-4 py-2 text-sm font-medium text-primary" %>
+        <%= submit_tag "Apply", class: "inline-flex items-center justify-center rounded-lg bg-inverse px-4 py-2 text-sm font-medium text-inverse" %>
       <% end %>
 
       <div data-monthly-planning-preview-target="summary" class="min-h-[6rem]" aria-live="polite" aria-atomic="true">

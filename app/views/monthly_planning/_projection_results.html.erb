@@ -27,14 +27,18 @@
   <% end %>
 
   <% if planner.tiered_breakdown %>
-    <div class="rounded-lg border border-primary bg-container p-4 text-sm text-primary space-y-2">
-      <p class="font-medium text-primary">Split across FX tiers</p>
-      <p class="text-secondary">
-        First tier (USD): <span class="text-primary font-medium tabular-nums"><%= planner.tiered_breakdown[:first_usd].round(2) %></span>
-      </p>
-      <p class="text-secondary">
-        Second tier (USD): <span class="text-primary font-medium tabular-nums"><%= planner.tiered_breakdown[:second_usd].round(2) %></span>
-      </p>
+    <div class="rounded-xl border border-primary bg-container-inset p-4 space-y-3">
+      <p class="text-sm font-medium text-primary">Split across FX tiers</p>
+      <dl class="grid gap-3 sm:grid-cols-2 text-sm">
+        <div class="rounded-lg border border-primary bg-container p-3">
+          <dt class="text-secondary text-xs uppercase tracking-wide">First tier</dt>
+          <dd class="mt-1 text-lg font-medium text-primary tabular-nums"><%= planner.tiered_breakdown[:first_usd].round(2) %> <span class="text-sm font-normal text-secondary">USD</span></dd>
+        </div>
+        <div class="rounded-lg border border-primary bg-container p-3">
+          <dt class="text-secondary text-xs uppercase tracking-wide">Second tier</dt>
+          <dd class="mt-1 text-lg font-medium text-primary tabular-nums"><%= planner.tiered_breakdown[:second_usd].round(2) %> <span class="text-sm font-normal text-secondary">USD</span></dd>
+        </div>
+      </dl>
     </div>
   <% end %>
 
