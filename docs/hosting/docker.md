@@ -51,7 +51,7 @@ At this point, the only file in your current working directory should be `compos
 
 ### Step 3 (optional): Configure your environment
 
-By default, our `compose.example.yml` file runs without any configuration.  That said, if you would like extra security (important if you're running outside of a local network), you can follow the steps below to set things up.
+By default, our `compose.example.yml` file runs without any configuration. That said, if you would like extra security (important if you're running outside of a local network), you can follow the steps below to set things up.
 
 If you're running the app locally and don't care much about security, you can skip this step.
 
@@ -149,14 +149,15 @@ We recommend using one of the following images, but you can pin your app to what
 - `ghcr.io/maybe-finance/maybe:stable` (latest release)
 
 By default, your app _will
-NOT_ automatically update. To update your self-hosted app, run the following commands in your terminal:
+NOT_ automatically update. To update your self-hosted app when using the prebuilt image from GHCR, run:
 
 ```bash
 cd ~/docker-apps/maybe # Navigate to whatever directory you configured the app in
-docker compose pull # This pulls the "latest" published image from GHCR
-docker compose build # This rebuilds the app with updates
-docker compose up --no-deps -d web worker # This restarts the app using the newest version
+docker compose pull # Pulls the published image from GHCR
+docker compose up --no-deps -d web worker # Restarts the app containers (service names match compose.example.yml)
 ```
+
+Only run `docker compose build` if you build the app image from a local `Dockerfile` instead of using the published image.
 
 ## How to change which updates your app receives
 
@@ -166,12 +167,11 @@ If you'd like to pin the app to a specific version or tag, all you need to do is
 image: ghcr.io/maybe-finance/maybe:stable
 ```
 
-After doing this, make sure and restart the app:
+After doing this, restart the app:
 
 ```bash
-docker compose pull # This pulls the "latest" published image from GHCR
-docker compose build # This rebuilds the app with updates
-docker compose up --no-deps -d app # This restarts the app using the newest version
+docker compose pull
+docker compose up --no-deps -d web worker
 ```
 
 ## Troubleshooting
@@ -182,7 +182,7 @@ If you are trying to get Maybe started for the **first time** and run into datab
 
 If you run into this issue, you can optionally **reset the database**.
 
-**PLEASE NOTE: this will delete any existing data that you have in your Maybe database, so proceed with caution.**  For first-time users of the app just trying to get started, you're generally safe to run the commands below.
+**PLEASE NOTE: this will delete any existing data that you have in your Maybe database, so proceed with caution.** For first-time users of the app just trying to get started, you're generally safe to run the commands below.
 
 By running the commands below, you will delete your existing Maybe database and "reset" it.
 

@@ -4,7 +4,7 @@ It means so much that you're interested in contributing to Maybe! Seriously. Tha
 
 ## House Rules
 
-- Before contributing, familiarize yourself with our project conventions. You should read through our [Project Conventions Rule](https://github.com/maybe-finance/maybe/.cursor/rules/project-conventions.mdc), which is intended for LLMs, but is also an excellent primer on how we write code for Maybe.
+- Before contributing, familiarize yourself with our project conventions. You should read through our [Project Conventions Rule](https://github.com/maybe-finance/maybe/blob/main/.cursor/rules/project-conventions.mdc), which is intended for LLMs, but is also an excellent primer on how we write code for Maybe.
 - While totally optional, consider using Cursor + VSCode as it will automatically apply our project conventions to your code via the `.cursor/rules` directory.
 - Before contributing, please check if it already exists in [issues](https://github.com/maybe-finance/maybe/issues) or [PRs](https://github.com/maybe-finance/maybe/pulls)
 - Given the speed at which we're moving on the codebase, we don't assign issues or "give" issues to anyone.
@@ -28,6 +28,16 @@ To get setup for local development, you have two options:
    - [Mac Setup Guide](https://github.com/maybe-finance/maybe/wiki/Mac-Dev-Setup-Guide)
    - [Linux Setup Guide](https://github.com/maybe-finance/maybe/wiki/Linux-Dev-Setup-Guide)
    - [Windows Setup Guide](https://github.com/maybe-finance/maybe/wiki/Windows-Dev-Setup-Guide)
+
+### Quick verification (small changes)
+
+For a tight loop, run only what your change touches:
+
+- Ruby: `bin/rails test path/to/file_test.rb` (or `path/to/file_test.rb:LINE`), and `bin/rubocop` on edited `.rb` files
+- JavaScript: `npm run lint -- path/to/file.js`
+- Before opening a PR, run the full checks in [CLAUDE.md](CLAUDE.md) (tests, RuboCop, ERB lint, Biome, Brakeman) so CI stays green.
+
+See [AGENTS.md](AGENTS.md) for a command table and environment notes.
 
 ### Making a Pull Request
 
