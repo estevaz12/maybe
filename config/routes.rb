@@ -96,6 +96,8 @@ Rails.application.routes.draw do
 
   get "monthly-planning", to: "monthly_planning#show", as: :monthly_planning_root
   get "monthly-planning/snapshots/:id", to: "monthly_planning#show_snapshot", as: :monthly_planning_snapshot
+  get "monthly-planning/:month_year/preview", to: "monthly_planning#preview", as: :monthly_planning_preview,
+      constraints: { month_year: /[a-z]{3}-\d{4}/i }
   get "monthly-planning/:month_year", to: "monthly_planning#show", as: :monthly_planning,
       constraints: { month_year: /[a-z]{3}-\d{4}/i }
   patch "monthly-planning/settings", to: "monthly_planning#update_settings", as: :monthly_planning_settings

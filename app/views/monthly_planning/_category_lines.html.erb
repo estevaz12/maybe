@@ -1,20 +1,22 @@
 <% if lines.any? %>
-  <table class="w-full text-sm mt-2">
-    <thead>
-      <tr class="text-left text-secondary border-b border-primary">
-        <th class="py-1 pr-2">Category</th>
-        <th class="py-1 text-right">Amount</th>
-      </tr>
-    </thead>
-    <tbody>
-      <% lines.each do |line| %>
-        <tr class="border-b border-primary/50">
-          <td class="py-1 pr-2 text-primary"><%= line.category_name %></td>
-          <td class="py-1 text-right text-primary"><%= Money.new(line.total, Current.family.currency).format %></td>
-        </tr>
-      <% end %>
-    </tbody>
-  </table>
+  <% categories_by_id = Current.family.categories.where(id: lines.map(&:category_id)).index_by(&:id) %>
+  <ul class="mt-3 space-y-2.5">
+    <% lines.each do |line| %>
+      <% category = categories_by_id[line.category_id] %>
+      <li class="flex items-center justify-between gap-3 min-w-0">
+        <div class="min-w-0 flex-1 [&>div]:inline-flex">
+          <% if category %>
+            <%= render "categories/badge", category: category %>
+          <% else %>
+            <span class="inline-flex items-center gap-1 text-sm font-medium rounded-full px-2 py-1 border border-primary text-secondary truncate max-w-full">
+              <%= line.category_name %>
+            </span>
+          <% end %>
+        </div>
+        <span class="text-sm font-medium text-primary tabular-nums shrink-0"><%= Money.new(line.total, Current.family.currency).format %></span>
+      </li>
+    <% end %>
+  </ul>
 <% else %>
-  <p class="text-sm text-secondary mt-2">No leaf spending in this bucket for this month.</p>
+  <p class="text-sm text-secondary mt-3">No spending in this group for this month.</p>
 <% end %>

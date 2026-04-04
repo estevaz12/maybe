@@ -3,10 +3,25 @@
 class MonthlyPlanningController < ApplicationController
   before_action :ensure_feature_enabled
   before_action :set_reference_month, except: %i[show_snapshot]
-  before_action :load_planning_context, only: %i[show create_snapshot]
+  before_action :load_planning_context, only: %i[show create_snapshot preview]
   before_action :set_snapshot, only: %i[show_snapshot]
 
   def show; end
+
+  def preview
+    unless @planner
+      return render json: { error: "no_projection" }, status: :unprocessable_entity
+    end
+
+    render json: {
+      summary_html: render_to_string(
+        partial: "monthly_planning/projection_results",
+        locals: { planner: @planner, planning_setting: @setting },
+        layout: false,
+        formats: [ :html ]
+      )
+    }
+  end
 
   def show_snapshot; end
 
@@ -89,6 +104,7 @@ class MonthlyPlanningController < ApplicationController
     def planning_params_hash
       p = params[:planning]&.permit(
         :inflation_percent,
+        :previous_month_surplus,
         :simple_fx_rate,
         :tiered_enabled,
         :tier_first_amount_usd,
@@ -97,6 +113,7 @@ class MonthlyPlanningController < ApplicationController
       )&.to_h
       p ||= {}
       p[:inflation_percent] = (p[:inflation_percent].presence || 0).to_s
+      p[:previous_month_surplus] = (p[:previous_month_surplus].presence || 0).to_s
       p[:tiered_enabled] = ActiveModel::Type::Boolean.new.cast(p[:tiered_enabled])
       p
     end
@@ -119,6 +136,8 @@ class MonthlyPlanningController < ApplicationController
         spent_run_rate_root: run_spent,
         spent_other_root: other_spent,
         inflation_percent: planning_params_hash[:inflation_percent],
+        previous_month_surplus: planning_params_hash[:previous_month_surplus],
+        as_of_date: Date.current,
         simple_fx_rate: planning_params_hash[:simple_fx_rate].presence,
         tiered_enabled: planning_params_hash[:tiered_enabled],
         tier_first_amount_usd: planning_params_hash[:tier_first_amount_usd].presence,
@@ -140,6 +159,9 @@ class MonthlyPlanningController < ApplicationController
 
       {
         "projected_run_rate_spend" => @planner.projected_run_rate_spend.to_s,
+        "adjusted_projected_run_rate_spend" => @planner.adjusted_projected_run_rate_spend.to_s,
+        "run_rate_days_next_month" => @planner.run_rate_days_next_month.to_s,
+        "next_month_days_elapsed" => @planner.next_month_days_elapsed.to_s,
         "combined_need_domestic" => @planner.combined_need_domestic.to_s,
         "simple_fx_amount_target_currency" => @planner.simple_fx_amount_target_currency&.to_s,
         "tiered_breakdown" => @planner.tiered_breakdown

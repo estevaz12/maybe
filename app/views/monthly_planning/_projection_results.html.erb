@@ -1,0 +1,91 @@
+<%# locals: (planner:, planning_setting: nil) %>
+<% other_root = monthly_planning_other_root(planning_setting) %>
+
+<div class="space-y-5 border-t border-primary pt-5">
+  <div class="rounded-xl bg-container-inset border border-primary p-5 shadow-border-xs">
+    <p class="text-sm text-secondary">Estimated total for next month</p>
+    <p class="mt-1 text-3xl font-semibold text-primary tabular-nums">
+      <%= Money.new(planner.combined_need_domestic, Current.family.currency).format %>
+    </p>
+    <% if planning_setting&.run_rate_root && other_root %>
+      <p class="mt-2 text-xs text-secondary leading-relaxed">
+        Uses a daily pace from <%= planner.reference_month.strftime("%B") %> for
+        <span class="text-primary font-medium"><%= planning_setting.run_rate_root.name %></span>,
+        plus last month's total for
+        <span class="text-primary font-medium"><%= other_root.name %></span>.
+      </p>
+    <% end %>
+  </div>
+
+  <% if planner.simple_fx_amount_target_currency %>
+    <div class="rounded-lg border border-primary bg-container p-4 text-sm">
+      <p class="text-secondary">Converted (your rate)</p>
+      <p class="mt-1 text-xl font-medium text-primary tabular-nums">
+        <%= planner.simple_fx_amount_target_currency.round(2) %>
+      </p>
+    </div>
+  <% end %>
+
+  <% if planner.tiered_breakdown %>
+    <div class="rounded-lg border border-primary bg-container p-4 text-sm text-primary space-y-2">
+      <p class="font-medium text-primary">Split across FX tiers</p>
+      <p class="text-secondary">
+        First tier (USD): <span class="text-primary font-medium tabular-nums"><%= planner.tiered_breakdown[:first_usd].round(2) %></span>
+      </p>
+      <p class="text-secondary">
+        Second tier (USD): <span class="text-primary font-medium tabular-nums"><%= planner.tiered_breakdown[:second_usd].round(2) %></span>
+      </p>
+    </div>
+  <% end %>
+
+  <details class="group rounded-lg border border-primary bg-container">
+    <summary class="cursor-pointer list-none px-4 py-3 text-sm font-medium text-primary flex items-center justify-between gap-2">
+      <span>How this number is calculated</span>
+      <%= icon "chevron-down", size: "sm", class: "shrink-0 text-secondary group-open:transform group-open:rotate-180" %>
+    </summary>
+    <div class="px-4 pb-4 pt-0 border-t border-primary/50">
+      <dl class="grid gap-3 text-sm text-primary pt-4">
+        <div class="flex justify-between gap-4">
+          <dt class="text-secondary">Days in <%= planner.reference_month.strftime("%B %Y") %></dt>
+          <dd class="tabular-nums font-medium text-primary"><%= planner.days_in_reference_month %></dd>
+        </div>
+        <div class="flex justify-between gap-4">
+          <dt class="text-secondary">Calendar days in <%= planner.next_month.strftime("%B %Y") %></dt>
+          <dd class="tabular-nums font-medium text-primary"><%= planner.days_in_next_month %></dd>
+        </div>
+        <% if planner.run_rate_days_next_month != planner.days_in_next_month %>
+          <div class="flex justify-between gap-4">
+            <dt class="text-secondary">Days already passed in <%= planner.next_month.strftime("%B") %> (as of <%= planner.as_of_date.strftime("%b %-d, %Y") %>)</dt>
+            <dd class="tabular-nums font-medium text-primary"><%= planner.next_month_days_elapsed %></dd>
+          </div>
+          <div class="flex justify-between gap-4 font-medium">
+            <dt class="text-secondary">Days counted for the pace (remaining)</dt>
+            <dd class="tabular-nums text-primary"><%= planner.run_rate_days_next_month %></dd>
+          </div>
+        <% end %>
+        <div class="flex justify-between gap-4">
+          <dt class="text-secondary">Inflation adjustment (×)</dt>
+          <dd class="tabular-nums font-medium text-primary"><%= planner.inflation_multiplier.round(4) %></dd>
+        </div>
+        <div class="flex justify-between gap-4">
+          <dt class="text-secondary">Projected spend (pace group)</dt>
+          <dd class="tabular-nums font-medium text-primary"><%= Money.new(planner.projected_run_rate_spend, Current.family.currency).format %></dd>
+        </div>
+        <% if planner.previous_month_surplus.positive? %>
+          <div class="flex justify-between gap-4">
+            <dt class="text-secondary">Surplus you're carrying forward</dt>
+            <dd class="tabular-nums font-medium text-primary">−<%= Money.new(planner.previous_month_surplus, Current.family.currency).format %></dd>
+          </div>
+          <div class="flex justify-between gap-4 font-medium">
+            <dt class="text-secondary">After surplus</dt>
+            <dd class="tabular-nums text-primary"><%= Money.new(planner.adjusted_projected_run_rate_spend, Current.family.currency).format %></dd>
+          </div>
+        <% end %>
+        <div class="flex justify-between gap-4">
+          <dt class="text-secondary">Last month's other group</dt>
+          <dd class="tabular-nums font-medium text-primary"><%= Money.new(planner.spent_other_root, Current.family.currency).format %></dd>
+        </div>
+      </dl>
+    </div>
+  </details>
+</div>

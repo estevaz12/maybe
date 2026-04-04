@@ -5,14 +5,23 @@ if ENV["COVERAGE"] == "true"
   end
 end
 
-require_relative "../config/environment"
-
 ENV["RAILS_ENV"] ||= "test"
 
-# Set Plaid to sandbox mode for tests
+require_relative "../config/environment"
+
+# Dotenv can load empty PLAID_* from .env / .env.test and overwrite ENV so the Plaid initializer
+# skips (blank is not .present?). Ensure sandbox credentials and config.plaid for the whole suite.
 ENV["PLAID_ENV"] = "sandbox"
-ENV["PLAID_CLIENT_ID"] ||= "test_client_id"
-ENV["PLAID_SECRET"] ||= "test_secret"
+ENV["PLAID_CLIENT_ID"] = ENV["PLAID_CLIENT_ID"].presence || "test_client_id"
+ENV["PLAID_SECRET"] = ENV["PLAID_SECRET"].presence || "test_secret"
+
+if Rails.application.config.plaid.nil?
+  cfg = Plaid::Configuration.new
+  cfg.server_index = Plaid::Configuration::Environment[ENV["PLAID_ENV"] || "sandbox"]
+  cfg.api_key["PLAID-CLIENT-ID"] = ENV["PLAID_CLIENT_ID"]
+  cfg.api_key["PLAID-SECRET"] = ENV["PLAID_SECRET"]
+  Rails.application.config.plaid = cfg
+end
 
 # Fixes Segfaults on M1 Macs when running tests in parallel (temporary workaround)
 ENV["PGGSSENCMODE"] = "disable"

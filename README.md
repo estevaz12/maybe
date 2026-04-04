@@ -1,4 +1,3 @@
-
 <img width="1190" alt="maybe_hero" src="https://github.com/user-attachments/assets/5ed08763-a9ee-42b2-a436-e05038fcf573" />
 
 # Maybe: The personal finance app for everyone
@@ -26,7 +25,7 @@ The instructions below are for developers to get started with contributing to th
 
 ### Requirements
 
-- See `.ruby-version` file for required Ruby version
+- See `.ruby-version` file for required Ruby version (if you use [mise](https://mise.jdx.dev/), run `mise trust` in the repo root once so `mise.toml` applies, then `mise install`)
 - PostgreSQL >9.3 (ideally, latest stable version)
 
 After cloning the repo, the basic setup commands are:

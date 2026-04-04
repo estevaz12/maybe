@@ -1,0 +1,4 @@
+# Pin Ruby to match `.ruby-version` (Gemfile uses `ruby file: ".ruby-version"`).
+# First time in this repo: `mise trust` (see https://mise.jdx.dev/cli/trust.html).
+[tools]
+ruby = "3.4.4"

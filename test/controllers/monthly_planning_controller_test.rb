@@ -17,6 +17,28 @@ class MonthlyPlanningControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "preview returns projection html json" do
+    family = users(:family_admin).family
+    a = family.categories.create!(name: "Preview A", classification: "expense", lucide_icon: "circle")
+    b = family.categories.create!(name: "Preview B", classification: "expense", lucide_icon: "circle")
+    FamilyMonthlyPlanningSetting.create!(
+      family: family,
+      first_root: a,
+      second_root: b,
+      run_rate_root: a
+    )
+
+    ref = Date.new(2026, 2, 1)
+    get monthly_planning_preview_url(Budget.date_to_param(ref)),
+        params: { planning: { inflation_percent: "5", previous_month_surplus: "0" } },
+        headers: { "Accept" => "application/json" }
+
+    assert_response :success
+    body = JSON.parse(response.body)
+    assert body["summary_html"].present?
+    assert_match "Estimated total for next month", body["summary_html"]
+  end
+
   test "update settings" do
     family = users(:family_admin).family
     a = family.categories.create!(name: "A", classification: "expense", lucide_icon: "circle")
