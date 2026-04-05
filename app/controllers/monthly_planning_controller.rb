@@ -58,7 +58,7 @@ class MonthlyPlanningController < ApplicationController
     end
 
     def ensure_feature_enabled
-      return if ENV.fetch("MONTHLY_PLANNING_ENABLED", "true") == "true"
+      return if MonthlyPlanning::Feature.enabled?
 
       head :not_found
     end

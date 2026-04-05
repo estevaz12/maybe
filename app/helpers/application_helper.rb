@@ -2,7 +2,7 @@ module ApplicationHelper
   include Pagy::Frontend
 
   def monthly_planning_enabled?
-    ENV.fetch("MONTHLY_PLANNING_ENABLED", "true") == "true"
+    MonthlyPlanning::Feature.enabled?
   end
 
   def styled_form_with(**options, &block)
