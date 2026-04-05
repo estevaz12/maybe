@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_04_04_123125) do
+ActiveRecord::Schema[7.2].define(version: 2026_04_05_123000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -278,6 +278,16 @@ ActiveRecord::Schema[7.2].define(version: 2026_04_04_123125) do
     t.index ["family_id"], name: "index_family_exports_on_family_id"
   end
 
+  create_table "family_imports", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "family_id", null: false
+    t.string "status", default: "pending", null: false
+    t.text "error_message"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.boolean "replace_rules", default: false, null: false
+    t.index ["family_id"], name: "index_family_imports_on_family_id"
+  end
+
   create_table "family_monthly_planning_settings", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "family_id", null: false
     t.uuid "first_root_category_id"
@@ -285,6 +295,8 @@ ActiveRecord::Schema[7.2].define(version: 2026_04_04_123125) do
     t.uuid "run_rate_root_category_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.date "second_root_period_start"
+    t.date "second_root_period_end"
     t.index ["family_id"], name: "index_family_monthly_planning_settings_on_family_id", unique: true
   end
 
@@ -860,6 +872,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_04_04_123125) do
   add_foreign_key "entries", "accounts"
   add_foreign_key "entries", "imports"
   add_foreign_key "family_exports", "families"
+  add_foreign_key "family_imports", "families"
   add_foreign_key "family_monthly_planning_settings", "categories", column: "first_root_category_id"
   add_foreign_key "family_monthly_planning_settings", "categories", column: "run_rate_root_category_id"
   add_foreign_key "family_monthly_planning_settings", "categories", column: "second_root_category_id"

@@ -19,6 +19,20 @@ export default class extends Controller {
     this.timeout = setTimeout(() => this.refresh(), 280);
   }
 
+  onInput(event) {
+    if (event.target.type === "date") return;
+    this.scheduleRefresh();
+  }
+
+  handleChange(event) {
+    const el = event.target;
+    if (el.type === "date") {
+      if (this.hasFormTarget) el.form.requestSubmit();
+      return;
+    }
+    this.scheduleRefresh();
+  }
+
   async refresh() {
     if (!this.hasFormTarget || !this.hasSummaryTarget) return;
 
@@ -50,6 +64,15 @@ export default class extends Controller {
     const source = this.formTarget;
     const dest = this.snapshotFormTarget;
 
+    const findPlanningInput = (root, name) => {
+      for (const el of root.querySelectorAll(
+        'input[name^="planning"], select[name^="planning"]',
+      )) {
+        if (el.name === name) return el;
+      }
+      return null;
+    };
+
     dest.querySelectorAll('input[name^="planning"]').forEach((field) => {
       const name = field.getAttribute("name");
       if (!name) return;
@@ -62,8 +85,27 @@ export default class extends Controller {
         return;
       }
 
-      const src = source.querySelector(`[name="${name}"]`);
-      if (src) field.value = src.value;
+      if (
+        field.type === "hidden" &&
+        name.includes("[run_rate]") &&
+        name.endsWith("][manual]")
+      ) {
+        for (const el of source.querySelectorAll('input[type="checkbox"]')) {
+          if (el.name === name) {
+            field.value = el.checked ? "1" : "0";
+            return;
+          }
+        }
+      }
+
+      const src = findPlanningInput(source, name);
+      if (!src) return;
+
+      if (src.type === "checkbox") {
+        field.value = src.checked ? "1" : "0";
+      } else {
+        field.value = src.value;
+      }
     });
   }
 }

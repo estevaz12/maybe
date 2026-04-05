@@ -1,0 +1,42 @@
+<%= turbo_frame_tag "family_imports",
+    data: imports.any? { |i| i.pending? || i.processing? } ? {
+      turbo_refresh_url: family_imports_path,
+      turbo_refresh_interval: 3000
+    } : {} do %>
+  <div class="mt-4 space-y-3 max-h-96 overflow-y-auto">
+    <% if imports.any? %>
+      <% imports.each do |import| %>
+        <div class="flex items-center justify-between bg-container p-4 rounded-lg border border-primary">
+          <div>
+            <p class="text-sm font-medium text-primary">Import from <%= import.created_at.strftime("%B %d, %Y at %I:%M %p") %></p>
+            <% if import.replace_rules %>
+              <p class="text-xs text-secondary">Replace all rules: yes</p>
+            <% end %>
+            <% if import.failed? && import.error_message.present? %>
+              <p class="text-xs text-destructive mt-1"><%= import.error_message %></p>
+            <% end %>
+          </div>
+
+          <% if import.processing? || import.pending? %>
+            <div class="flex items-center gap-2 text-secondary">
+              <div class="animate-spin h-4 w-4 border-2 border-secondary border-t-transparent rounded-full"></div>
+              <span class="text-sm">Importing...</span>
+            </div>
+          <% elsif import.completed? %>
+            <div class="flex items-center gap-2 text-positive">
+              <%= icon "check", class: "w-5 h-5" %>
+              <span class="text-sm font-medium">Done</span>
+            </div>
+          <% elsif import.failed? %>
+            <div class="flex items-center gap-2 text-destructive">
+              <%= icon "alert-circle", class: "w-4 h-4" %>
+              <span class="text-sm">Failed</span>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+    <% else %>
+      <p class="text-sm text-secondary text-center py-4">No imports yet</p>
+    <% end %>
+  </div>
+<% end %>

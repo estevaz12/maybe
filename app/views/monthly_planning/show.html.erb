@@ -1,26 +1,21 @@
 <% title "Plan next month" %>
 
-<div class="max-w-5xl mx-auto space-y-10 pb-16 px-3">
-  <header class="space-y-3">
+<div class="max-w-3xl mx-auto space-y-8 pb-16 px-3">
+  <header class="space-y-2">
     <h1 class="text-2xl font-medium text-primary">Plan next month</h1>
-    <p class="text-sm text-secondary max-w-2xl leading-relaxed">
-      Look at what you spent last month, then estimate what you'll need ahead. Pick two top-level expense categories in
-      <%= link_to "Categories", categories_path, class: "text-link" %> and put your spending groups under them—same idea as organizing a budget.
+    <p class="text-sm text-secondary leading-relaxed">
+      Pick two parent categories in <%= link_to "Categories", categories_path, class: "text-link" %>, then review last month and adjust next month’s estimate.
     </p>
   </header>
 
-  <div class="flex flex-wrap items-center gap-2">
+  <div class="flex flex-wrap items-center gap-2 text-sm">
     <%= render DS::Link.new(variant: "icon", icon: "chevron-left", href: monthly_planning_path(Budget.date_to_param(@reference_month - 1.month))) %>
     <%= render DS::Link.new(variant: "icon", icon: "chevron-right", href: monthly_planning_path(Budget.date_to_param(@reference_month + 1.month))) %>
-    <span class="text-lg font-medium text-primary">
-      <%= @reference_month.strftime("%B %Y") %>
-    </span>
-    <span class="text-sm text-secondary">
-      · Planning for <%= @next_month.strftime("%B %Y") %>
-    </span>
+    <span class="font-medium text-primary"><%= @reference_month.strftime("%B %Y") %></span>
+    <span class="text-secondary">→ <%= @next_month.strftime("%B %Y") %></span>
   </div>
 
-  <section class="bg-container rounded-xl border border-primary shadow-border-xs p-5 md:p-6 space-y-5">
+  <section class="rounded-xl border border-primary bg-container p-5 space-y-5">
     <div>
       <h2 class="text-lg font-medium text-primary">Your spending groups</h2>
       <p class="text-sm text-secondary mt-1 max-w-2xl leading-relaxed">
@@ -55,177 +50,239 @@
           <p class="text-xs text-secondary mt-1.5">The other group uses last month’s total as-is.</p>
         </div>
       </div>
+      <div class="grid gap-5 md:grid-cols-2">
+        <div>
+          <%= f.label :second_root_period_start, "Second group period start (optional)", class: "block text-sm font-medium text-primary mb-1.5" %>
+          <%= f.date_field :second_root_period_start, autocomplete: "off", class: "w-full border border-primary rounded-lg bg-container text-primary px-3 py-2" %>
+        </div>
+        <div>
+          <%= f.label :second_root_period_end, "Second group period end (optional)", class: "block text-sm font-medium text-primary mb-1.5" %>
+          <%= f.date_field :second_root_period_end, autocomplete: "off", class: "w-full border border-primary rounded-lg bg-container text-primary px-3 py-2" %>
+        </div>
+      </div>
+      <p class="text-xs text-secondary max-w-2xl leading-relaxed">
+        Leave both blank to use the same calendar month as the month selected at the top for both groups. Set both when the second group should follow a different window (for example a credit card statement that doesn’t match the calendar month).
+      </p>
       <%= f.submit "Save groups", class: "inline-flex items-center justify-center rounded-lg bg-inverse px-4 py-2 text-sm font-medium text-inverse" %>
     <% end %>
   </section>
 
-  <section class="bg-container rounded-xl border border-primary shadow-border-xs p-5 md:p-6 space-y-5">
-    <div>
-      <h2 class="text-lg font-medium text-primary">Last month’s spending</h2>
-      <p class="text-sm text-secondary mt-1">Totals by category for <%= @reference_month.strftime("%B %Y") %>.</p>
-    </div>
+  <% show_planning_preview = @setting.first_root_category_id.present? && @setting.second_root_category_id.present? && @setting.run_rate_root_category_id.present? && @planner %>
 
-    <% if @setting.first_root_category_id.blank? || @setting.second_root_category_id.blank? %>
-      <p class="text-sm text-secondary">Choose both groups above to see amounts.</p>
-    <% else %>
-      <div class="grid gap-4 md:grid-cols-2">
-        <div class="rounded-xl bg-container-inset border border-primary p-4 space-y-3">
-          <div class="flex flex-wrap items-start justify-between gap-3">
-            <div class="min-w-0 [&>div]:inline-flex">
-              <% if @setting.first_root %>
-                <%= render "categories/badge", category: @setting.first_root %>
-              <% else %>
-                <span class="text-sm font-medium text-primary">First group</span>
-              <% end %>
-            </div>
-            <p class="text-xl font-semibold text-primary tabular-nums shrink-0">
-              <%= Money.new(@report.first_root_total, Current.family.currency).format %>
-            </p>
-          </div>
-          <%= render "category_lines", lines: @report.first_root_lines %>
-        </div>
-
-        <div class="rounded-xl bg-container-inset border border-primary p-4 space-y-3">
-          <div class="flex flex-wrap items-start justify-between gap-3">
-            <div class="min-w-0 [&>div]:inline-flex">
-              <% if @setting.second_root %>
-                <%= render "categories/badge", category: @setting.second_root %>
-              <% else %>
-                <span class="text-sm font-medium text-primary">Second group</span>
-              <% end %>
-            </div>
-            <p class="text-xl font-semibold text-primary tabular-nums shrink-0">
-              <%= Money.new(@report.second_root_total, Current.family.currency).format %>
-            </p>
-          </div>
-          <%= render "category_lines", lines: @report.second_root_lines %>
-        </div>
-      </div>
-
-      <% if @report.outside_total.positive? %>
-        <div class="rounded-xl border border-warning bg-surface p-4 space-y-3">
-          <div>
-            <p class="text-sm font-medium text-warning">Spending outside these groups</p>
-            <p class="text-sm text-secondary mt-1">
-              <%= Money.new(@report.outside_total, Current.family.currency).format %> isn't in either group—move subcategories under your two parents in Categories if you want them included.
-            </p>
-          </div>
-          <%= render "category_lines", lines: @report.outside_lines %>
-        </div>
-      <% end %>
-    <% end %>
-  </section>
-
-  <% if @setting.run_rate_root_category_id.present? && @planner %>
-    <section
-      class="bg-container rounded-xl border border-primary shadow-border-xs p-5 md:p-6 space-y-6"
-      data-controller="monthly-planning-preview"
-      data-monthly-planning-preview-url-value="<%= monthly_planning_preview_path(Budget.date_to_param(@reference_month)) %>"
-    >
-      <div>
-        <h2 class="text-lg font-medium text-primary">Next month estimate</h2>
-        <p class="text-sm text-secondary mt-1 max-w-2xl leading-relaxed">
-          We take the daily average from <%= @reference_month.strftime("%B") %> and apply it to the days left in <%= @next_month.strftime("%B") %> (if we're already in that month, past days don't count). Adjust inflation or surplus below—numbers refresh as you type.
-        </p>
-      </div>
-
+  <% if @setting.first_root_category_id.present? && @setting.second_root_category_id.present? %>
+    <div
+      class="space-y-8"
+      <% if show_planning_preview %>
+        data-controller="monthly-planning-preview"
+        data-monthly-planning-preview-url-value="<%= monthly_planning_preview_path(Budget.date_to_param(@reference_month)) %>"
+      <% end %>>
       <%= form_with url: monthly_planning_path(Budget.date_to_param(@reference_month)), method: :get,
-            class: "space-y-5",
-            data: {
+            class: "space-y-8",
+            data: show_planning_preview ? {
               monthly_planning_preview_target: "form",
-              action: "input->monthly-planning-preview#scheduleRefresh change->monthly-planning-preview#scheduleRefresh"
-            } do %>
-        <div class="grid gap-4 md:grid-cols-3">
+              action: "input->monthly-planning-preview#onInput change->monthly-planning-preview#handleChange"
+            } : {} do %>
+        <section class="rounded-xl border border-primary bg-container p-5 space-y-6">
           <div>
-            <%= label_tag "planning[inflation_percent]", "Expected inflation (%)", class: "block text-sm font-medium text-primary mb-1.5" %>
-            <%= number_field_tag "planning[inflation_percent]", params.dig(:planning, :inflation_percent) || @planning_params[:inflation_percent], step: "any", class: "w-full border border-primary rounded-lg bg-container px-3 py-2 text-primary" %>
+            <h2 class="text-lg font-medium text-primary">Last month</h2>
+            <p class="text-sm text-secondary mt-1">
+              First group &amp; outside: <%= @reference_month.strftime("%B %Y") %>.
+              <% if @second_period_for_report.start_date == @period.start_date && @second_period_for_report.end_date == @period.end_date %>
+                Second group: same unless you set dates below.
+              <% else %>
+                Second group: <%= @second_period_for_report.start_date.strftime("%b %-d") %> – <%= @second_period_for_report.end_date.strftime("%b %-d, %Y") %>.
+              <% end %>
+            </p>
           </div>
-          <div>
-            <%= label_tag "planning[previous_month_surplus]", "Previous month surplus", class: "block text-sm font-medium text-primary mb-1.5" %>
-            <%= number_field_tag "planning[previous_month_surplus]", params.dig(:planning, :previous_month_surplus) || @planning_params[:previous_month_surplus], step: "any", min: "0", class: "w-full border border-primary rounded-lg bg-container px-3 py-2 text-primary" %>
-            <p class="text-xs text-secondary mt-1.5">Reduces the projected pace amount (same currency as your accounts).</p>
+
+          <div class="space-y-2">
+            <p class="text-xs text-secondary">Second group period (optional)</p>
+            <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+              <div class="flex-1 min-w-[8rem]">
+                <%= label_tag "planning[second_period_start]", "Start", class: "block text-sm font-medium text-primary mb-1" %>
+                <%= date_field_tag "planning[second_period_start]", @second_period_start_value, autocomplete: "off", class: "w-full border border-primary rounded-lg bg-container px-3 py-2 text-primary text-sm" %>
+              </div>
+              <div class="flex-1 min-w-[8rem]">
+                <%= label_tag "planning[second_period_end]", "End", class: "block text-sm font-medium text-primary mb-1" %>
+                <%= date_field_tag "planning[second_period_end]", @second_period_end_value, autocomplete: "off", class: "w-full border border-primary rounded-lg bg-container px-3 py-2 text-primary text-sm" %>
+              </div>
+              <% unless show_planning_preview %>
+                <%= submit_tag "Apply", class: "inline-flex items-center justify-center rounded-lg bg-inverse px-4 py-2 text-sm font-medium text-inverse sm:ml-auto" %>
+              <% end %>
+            </div>
           </div>
-          <div>
-            <%= label_tag "planning[simple_fx_rate]", "Simple exchange rate (optional)", class: "block text-sm font-medium text-primary mb-1.5" %>
-            <%= number_field_tag "planning[simple_fx_rate]", params.dig(:planning, :simple_fx_rate), step: "any", class: "w-full border border-primary rounded-lg bg-container px-3 py-2 text-primary" %>
-            <p class="text-xs text-secondary mt-1.5">Home currency per 1 unit of the currency you're converting to.</p>
+
+          <div class="grid gap-8 md:grid-cols-2 md:gap-10">
+            <div class="space-y-3">
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0 [&>div]:inline-flex">
+                  <% if @setting.first_root %>
+                    <%= render "categories/badge", category: @setting.first_root %>
+                  <% else %>
+                    <span class="text-sm font-medium text-primary">First group</span>
+                  <% end %>
+                </div>
+                <p class="text-lg font-semibold text-primary tabular-nums shrink-0">
+                  <%= Money.new(@report.first_root_total, Current.family.currency).format %>
+                </p>
+              </div>
+              <p class="text-xs text-secondary"><%= @reference_month.strftime("%B %Y") %></p>
+              <%= render "category_lines", lines: @report.first_root_lines %>
+            </div>
+
+            <div class="space-y-3">
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0 [&>div]:inline-flex">
+                  <% if @setting.second_root %>
+                    <%= render "categories/badge", category: @setting.second_root %>
+                  <% else %>
+                    <span class="text-sm font-medium text-primary">Second group</span>
+                  <% end %>
+                </div>
+                <p class="text-lg font-semibold text-primary tabular-nums shrink-0">
+                  <%= Money.new(@report.second_root_total, Current.family.currency).format %>
+                </p>
+              </div>
+              <p class="text-xs text-secondary">
+                <% if @second_period_for_report.start_date == @period.start_date && @second_period_for_report.end_date == @period.end_date %>
+                  <%= @reference_month.strftime("%B %Y") %>
+                <% else %>
+                  <%= @second_period_for_report.start_date.strftime("%b %-d, %Y") %> – <%= @second_period_for_report.end_date.strftime("%b %-d, %Y") %>
+                <% end %>
+              </p>
+              <%= render "category_lines", lines: @report.second_root_lines %>
+            </div>
           </div>
+
+          <% if @report.outside_total.positive? %>
+            <div class="space-y-2 pt-2 border-t border-tertiary">
+              <p class="text-sm font-medium text-warning">Outside your groups</p>
+              <p class="text-sm text-secondary">
+                <%= Money.new(@report.outside_total, Current.family.currency).format %> — re-categorize in <%= link_to "Categories", categories_path, class: "text-link" %> to include it.
+              </p>
+              <%= render "category_lines", lines: @report.outside_lines %>
+            </div>
+          <% end %>
+        </section>
+
+        <% if show_planning_preview %>
+          <section class="rounded-xl border border-primary bg-container p-5 space-y-6">
+            <div>
+              <h2 class="text-lg font-medium text-primary">Next month</h2>
+              <p class="text-sm text-secondary mt-1">
+                Edit the pace group below, then set inflation, surplus, and optional FX. Results update as you type.
+              </p>
+            </div>
+
+            <% if @run_rate_report_lines.any? && @reference_days_for_run_rate %>
+              <%= render "run_rate_lines_table",
+                    lines: @run_rate_report_lines,
+                    planning_params: @planning_params,
+                    planning_setting: @setting,
+                    reference_days: @reference_days_for_run_rate %>
+            <% end %>
+
+            <div class="space-y-3 pt-2 border-t border-tertiary">
+              <div class="grid gap-4 sm:grid-cols-3">
+                <div>
+                  <%= label_tag "planning[inflation_percent]", "Inflation (%)", class: "block text-sm font-medium text-primary mb-1" %>
+                  <%= number_field_tag "planning[inflation_percent]", params.dig(:planning, :inflation_percent) || @planning_params[:inflation_percent], step: "any", autocomplete: "off", class: "w-full border border-primary rounded-lg bg-container px-3 py-2 text-primary text-sm" %>
+                </div>
+                <div>
+                  <%= label_tag "planning[previous_month_surplus]", "Previous month surplus", class: "block text-sm font-medium text-primary mb-1" %>
+                  <%= number_field_tag "planning[previous_month_surplus]", params.dig(:planning, :previous_month_surplus) || @planning_params[:previous_month_surplus], step: "any", min: "0", autocomplete: "off", class: "w-full border border-primary rounded-lg bg-container px-3 py-2 text-primary text-sm" %>
+                </div>
+                <div>
+                  <%= label_tag "planning[simple_fx_rate]", "FX rate (optional)", class: "block text-sm font-medium text-primary mb-1" %>
+                  <%= number_field_tag "planning[simple_fx_rate]", params.dig(:planning, :simple_fx_rate), step: "any", autocomplete: "off", class: "w-full border border-primary rounded-lg bg-container px-3 py-2 text-primary text-sm" %>
+                </div>
+              </div>
+            </div>
+
+            <details class="group text-sm">
+              <summary class="cursor-pointer list-none inline-flex items-center gap-1.5 text-secondary hover:text-primary">
+                <%= icon "chevron-down", size: "sm", class: "group-open:rotate-180 transition-transform" %>
+                Tiered exchange rates
+              </summary>
+              <div class="mt-3 space-y-4 pl-1 border-l border-primary/40">
+                <label class="flex items-start gap-2 cursor-pointer">
+                  <%= check_box_tag "planning[tiered_enabled]", "1", params.dig(:planning, :tiered_enabled), class: "rounded border-primary mt-0.5 shrink-0" %>
+                  <span class="text-secondary">Two rates with a USD cap on the first tier</span>
+                </label>
+                <div class="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <%= label_tag "planning[tier_first_amount_usd]", "USD cap", class: "block text-sm font-medium text-primary mb-1" %>
+                    <%= number_field_tag "planning[tier_first_amount_usd]", params.dig(:planning, :tier_first_amount_usd), step: "any", autocomplete: "off", class: "w-full border border-primary rounded-lg px-3 py-2 bg-container text-primary text-sm" %>
+                  </div>
+                  <div>
+                    <%= label_tag "planning[tier_first_ars_per_usd]", "First rate (ARS/USD)", class: "block text-sm font-medium text-primary mb-1" %>
+                    <%= number_field_tag "planning[tier_first_ars_per_usd]", params.dig(:planning, :tier_first_ars_per_usd), step: "any", autocomplete: "off", class: "w-full border border-primary rounded-lg px-3 py-2 bg-container text-primary text-sm" %>
+                  </div>
+                  <div class="sm:col-span-2">
+                    <%= label_tag "planning[tier_second_ars_per_usd]", "Second rate (ARS/USD)", class: "block text-sm font-medium text-primary mb-1" %>
+                    <%= number_field_tag "planning[tier_second_ars_per_usd]", params.dig(:planning, :tier_second_ars_per_usd), step: "any", autocomplete: "off", class: "w-full max-w-md border border-primary rounded-lg px-3 py-2 bg-container text-primary text-sm" %>
+                  </div>
+                </div>
+              </div>
+            </details>
+
+            <div class="flex justify-end pt-2">
+              <%= submit_tag "Apply", class: "inline-flex items-center justify-center rounded-lg bg-inverse px-5 py-2 text-sm font-medium text-inverse" %>
+            </div>
+          </section>
+        <% end %>
+      <% end %>
+
+      <% if show_planning_preview %>
+        <div data-monthly-planning-preview-target="summary" class="min-h-[6rem]" aria-live="polite" aria-atomic="true">
+          <%= render "projection_results", planner: @planner, planning_setting: @setting %>
         </div>
-        <details class="group rounded-lg border border-primary bg-container">
-          <summary class="cursor-pointer list-none px-4 py-3 flex items-center justify-between gap-2 text-sm font-medium text-primary">
-            <span>Advanced: tiered exchange rates</span>
-            <%= icon "chevron-down", size: "sm", class: "shrink-0 text-secondary group-open:transform group-open:rotate-180" %>
-          </summary>
-          <div class="px-4 pb-5 pt-3 space-y-5">
-            <label class="flex items-start gap-3 cursor-pointer">
-              <%= check_box_tag "planning[tiered_enabled]", "1", params.dig(:planning, :tiered_enabled), class: "rounded border-primary mt-0.5 shrink-0" %>
-              <span class="text-sm text-primary leading-snug">
-                Use two conversion rates: a cheaper rate up to a USD limit, then a second rate for the rest.
-              </span>
-            </label>
 
-            <div class="rounded-xl bg-container-inset border border-primary p-4 space-y-4">
-              <div>
-                <p class="text-xs font-medium text-secondary uppercase tracking-wide">First tier</p>
-                <p class="text-xs text-secondary mt-0.5">Applies to the domestic total until the USD cap is reached.</p>
-              </div>
-              <div class="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <%= label_tag "planning[tier_first_amount_usd]", "USD cap (max at first rate)", class: "block text-sm font-medium text-primary mb-1.5" %>
-                  <%= number_field_tag "planning[tier_first_amount_usd]", params.dig(:planning, :tier_first_amount_usd), placeholder: "e.g. 200", step: "any", class: "w-full border border-primary rounded-lg px-3 py-2 bg-container text-primary text-sm" %>
-                </div>
-                <div>
-                  <%= label_tag "planning[tier_first_ars_per_usd]", "First rate (ARS per 1 USD)", class: "block text-sm font-medium text-primary mb-1.5" %>
-                  <%= number_field_tag "planning[tier_first_ars_per_usd]", params.dig(:planning, :tier_first_ars_per_usd), placeholder: "e.g. 1200", step: "any", class: "w-full border border-primary rounded-lg px-3 py-2 bg-container text-primary text-sm" %>
-                </div>
-              </div>
-            </div>
-
-            <div class="rounded-xl bg-container-inset border border-primary p-4 space-y-3">
-              <div>
-                <p class="text-xs font-medium text-secondary uppercase tracking-wide">Second tier</p>
-                <p class="text-xs text-secondary mt-0.5">Used for the domestic amount after the first tier is exhausted.</p>
-              </div>
-              <div>
-                <%= label_tag "planning[tier_second_ars_per_usd]", "Second rate (ARS per 1 USD)", class: "block text-sm font-medium text-primary mb-1.5" %>
-                <%= number_field_tag "planning[tier_second_ars_per_usd]", params.dig(:planning, :tier_second_ars_per_usd), placeholder: "e.g. 1400", step: "any", class: "w-full border border-primary rounded-lg px-3 py-2 bg-container text-primary text-sm sm:max-w-md" %>
-              </div>
-            </div>
+        <%= form_with url: monthly_planning_snapshots_path, method: :post,
+              data: { monthly_planning_preview_target: "snapshotForm" } do %>
+          <%= hidden_field_tag :month_year, Budget.date_to_param(@reference_month) %>
+          <%= hidden_field_tag "planning[inflation_percent]", params.dig(:planning, :inflation_percent) || @planning_params[:inflation_percent] %>
+          <%= hidden_field_tag "planning[previous_month_surplus]", params.dig(:planning, :previous_month_surplus) || @planning_params[:previous_month_surplus] %>
+          <%= hidden_field_tag "planning[simple_fx_rate]", params.dig(:planning, :simple_fx_rate) %>
+          <%= hidden_field_tag "planning[tiered_enabled]", ActiveModel::Type::Boolean.new.cast(params.dig(:planning, :tiered_enabled)) ? "1" : "0" %>
+          <%= hidden_field_tag "planning[tier_first_amount_usd]", params.dig(:planning, :tier_first_amount_usd) %>
+          <%= hidden_field_tag "planning[tier_first_ars_per_usd]", params.dig(:planning, :tier_first_ars_per_usd) %>
+          <%= hidden_field_tag "planning[tier_second_ars_per_usd]", params.dig(:planning, :tier_second_ars_per_usd) %>
+          <%= hidden_field_tag "planning[second_period_start]", @second_period_start_value %>
+          <%= hidden_field_tag "planning[second_period_end]", @second_period_end_value %>
+          <% if @run_rate_report_lines.any? && @reference_days_for_run_rate %>
+            <% @run_rate_report_lines.each do |line| %>
+              <% cid = line.category_id %>
+              <% rp = @planning_params[:run_rate] || {} %>
+              <% row = rp[cid.to_s] || rp[cid] || {} %>
+              <%= hidden_field_tag "planning[run_rate][#{cid}][manual]", ActiveModel::Type::Boolean.new.cast(row["manual"] || row[:manual]) ? "1" : "0" %>
+              <%= hidden_field_tag "planning[run_rate][#{cid}][manual_amount]", row["manual_amount"] || row[:manual_amount] %>
+            <% end %>
+          <% end %>
+          <div class="rounded-xl border border-primary bg-container p-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p class="text-sm text-secondary">Save this plan as a snapshot for <%= @reference_month.strftime("%B %Y") %>.</p>
+            <%= submit_tag "Save snapshot", class: "inline-flex items-center justify-center shrink-0 rounded-lg bg-inverse px-5 py-2 text-sm font-medium text-inverse w-full sm:w-auto" %>
           </div>
-        </details>
-        <%= submit_tag "Apply", class: "inline-flex items-center justify-center rounded-lg bg-inverse px-4 py-2 text-sm font-medium text-inverse" %>
+        <% end %>
       <% end %>
-
-      <div data-monthly-planning-preview-target="summary" class="min-h-[6rem]" aria-live="polite" aria-atomic="true">
-        <%= render "projection_results", planner: @planner, planning_setting: @setting %>
-      </div>
-
-      <%= form_with url: monthly_planning_snapshots_path, method: :post,
-            class: "pt-6 border-t border-primary",
-            data: { monthly_planning_preview_target: "snapshotForm" } do %>
-        <%= hidden_field_tag :month_year, Budget.date_to_param(@reference_month) %>
-        <%= hidden_field_tag "planning[inflation_percent]", params.dig(:planning, :inflation_percent) || @planning_params[:inflation_percent] %>
-        <%= hidden_field_tag "planning[previous_month_surplus]", params.dig(:planning, :previous_month_surplus) || @planning_params[:previous_month_surplus] %>
-        <%= hidden_field_tag "planning[simple_fx_rate]", params.dig(:planning, :simple_fx_rate) %>
-        <%= hidden_field_tag "planning[tiered_enabled]", ActiveModel::Type::Boolean.new.cast(params.dig(:planning, :tiered_enabled)) ? "1" : "0" %>
-        <%= hidden_field_tag "planning[tier_first_amount_usd]", params.dig(:planning, :tier_first_amount_usd) %>
-        <%= hidden_field_tag "planning[tier_first_ars_per_usd]", params.dig(:planning, :tier_first_ars_per_usd) %>
-        <%= hidden_field_tag "planning[tier_second_ars_per_usd]", params.dig(:planning, :tier_second_ars_per_usd) %>
-        <%= submit_tag "Save snapshot", class: "inline-flex items-center justify-center rounded-lg bg-inverse px-4 py-2 text-sm font-medium text-inverse" %>
-      <% end %>
+    </div>
+  <% else %>
+    <section class="rounded-xl border border-primary bg-container p-5">
+      <p class="text-sm text-secondary">Choose both groups above to see amounts.</p>
     </section>
-  <% elsif @setting.first_root_category_id.present? && @setting.second_root_category_id.present? %>
+  <% end %>
+
+  <% if @setting.first_root_category_id.present? && @setting.second_root_category_id.present? && @setting.run_rate_root_category_id.blank? %>
     <p class="text-sm text-secondary">Pick which group uses the daily pace above to see next month’s estimate.</p>
   <% end %>
 
   <% if @snapshots.any? %>
-    <section class="bg-container rounded-xl border border-primary shadow-border-xs p-5 md:p-6">
-      <h2 class="text-lg font-medium text-primary">Saved snapshots</h2>
-      <p class="text-sm text-secondary mt-1 mb-4">Open a snapshot to review inputs and results.</p>
-      <ul class="space-y-2 text-sm text-primary">
+    <section class="rounded-xl border border-primary bg-container p-5">
+      <h2 class="text-sm font-medium text-primary">Snapshots</h2>
+      <ul class="mt-3 divide-y divide-primary/40 text-sm">
         <% @snapshots.each do |snap| %>
-          <li class="flex justify-between gap-4 items-center">
-            <%= link_to snap.reference_month.strftime("%B %Y"), monthly_planning_snapshot_path(snap), class: "text-link font-medium" %>
+          <li class="flex justify-between gap-4 items-center py-2 first:pt-0">
+            <%= link_to snap.reference_month.strftime("%B %Y"), monthly_planning_snapshot_path(snap), class: "text-link" %>
             <span class="text-secondary shrink-0 text-xs tabular-nums"><%= snap.created_at.strftime("%Y-%m-%d %H:%M") %></span>
           </li>
         <% end %>

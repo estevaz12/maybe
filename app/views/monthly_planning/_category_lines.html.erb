@@ -1,6 +1,6 @@
 <% if lines.any? %>
   <% categories_by_id = Current.family.categories.where(id: lines.map(&:category_id)).index_by(&:id) %>
-  <ul class="mt-3 space-y-2.5">
+  <ul class="mt-3 space-y-2">
     <% lines.each do |line| %>
       <% category = categories_by_id[line.category_id] %>
       <li class="flex items-center justify-between gap-3 min-w-0">

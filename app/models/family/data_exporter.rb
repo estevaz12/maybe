@@ -101,13 +101,14 @@ class Family::DataExporter
 
     def generate_categories_csv
       CSV.generate do |csv|
-        csv << [ "name", "color", "parent_category", "classification" ]
+        csv << [ "name", "color", "lucide_icon", "parent_category", "classification" ]
 
         # Only export categories belonging to this family
         @family.categories.includes(:parent).find_each do |category|
           csv << [
             category.name,
             category.color,
+            category.lucide_icon,
             category.parent&.name,
             category.classification
           ]
@@ -150,7 +151,15 @@ class Family::DataExporter
       @family.merchants.find_each do |merchant|
         lines << {
           type: "Merchant",
-          data: merchant.as_json
+          data: merchant.as_json.merge("type" => merchant.type)
+        }.to_json
+      end
+
+      # Export rules (conditions + actions with export_id for import)
+      @family.rules.includes(conditions: :sub_conditions, actions: []).find_each do |rule|
+        lines << {
+          type: "Rule",
+          data: serialize_rule_for_export(rule)
         }.to_json
       end
 
@@ -234,5 +243,46 @@ class Family::DataExporter
       end
 
       lines.join("\n")
+    end
+
+    def serialize_rule_for_export(rule)
+      {
+        "resource_type" => rule.resource_type,
+        "name" => rule.name,
+        "effective_date" => rule.effective_date&.iso8601,
+        "active" => rule.active,
+        "conditions" => rule.conditions.where(parent_id: nil).order(:created_at).map { |c| serialize_rule_condition(c) },
+        "actions" => rule.actions.order(:created_at).map { |a| serialize_rule_action(a) }
+      }
+    end
+
+    def serialize_rule_condition(condition)
+      base = {
+        "export_id" => condition.id,
+        "condition_type" => condition.condition_type,
+        "operator" => condition.operator,
+        "value" => condition.value
+      }
+      if condition.compound?
+        base["sub_conditions"] = condition.sub_conditions.order(:created_at).map { |sc| serialize_rule_sub_condition(sc) }
+      end
+      base
+    end
+
+    def serialize_rule_sub_condition(condition)
+      {
+        "export_id" => condition.id,
+        "condition_type" => condition.condition_type,
+        "operator" => condition.operator,
+        "value" => condition.value
+      }
+    end
+
+    def serialize_rule_action(action)
+      {
+        "export_id" => action.id,
+        "action_type" => action.action_type,
+        "value" => action.value
+      }
     end
 end

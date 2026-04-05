@@ -110,6 +110,71 @@ class MonthlyPlanning::NextMonthPlannerTest < ActiveSupport::TestCase
     assert_in_delta 100 * 20, result.projected_run_rate_spend.to_f, 0.01
   end
 
+  test "line breakdown matches aggregate when no overrides" do
+    ref = Date.new(2026, 1, 1).beginning_of_month
+    nxt = Date.new(2026, 2, 1).beginning_of_month
+    lines = [
+      { category_id: "a0000000-0000-0000-0000-000000000001", category_name: "A", baseline_spent: 1500 },
+      { category_id: "a0000000-0000-0000-0000-000000000002", category_name: "B", baseline_spent: 1600 }
+    ]
+
+    agg = MonthlyPlanning::NextMonthPlanner.new(
+      reference_month: ref,
+      next_month: nxt,
+      spent_run_rate_root: 3100,
+      spent_other_root: 0,
+      inflation_percent: 0,
+      as_of_date: Date.new(2026, 1, 15),
+      simple_fx_rate: 1
+    ).call
+
+    line = MonthlyPlanning::NextMonthPlanner.new(
+      reference_month: ref,
+      next_month: nxt,
+      spent_run_rate_root: 3100,
+      spent_other_root: 0,
+      inflation_percent: 0,
+      as_of_date: Date.new(2026, 1, 15),
+      simple_fx_rate: 1,
+      run_rate_lines: lines,
+      reference_days_for_run_rate: 31,
+      run_rate_line_inputs: {}
+    ).call
+
+    assert line.uses_line_breakdown
+    assert_equal 2, line.run_rate_line_items.size
+    assert_in_delta agg.projected_run_rate_spend.to_f, line.projected_run_rate_spend.to_f, 0.01
+  end
+
+  test "manual line uses fixed amount without pace or inflation" do
+    ref = Date.new(2026, 1, 1).beginning_of_month
+    nxt = Date.new(2026, 2, 1).beginning_of_month
+    cid = "b0000000-0000-0000-0000-000000000001"
+    lines = [
+      { category_id: cid, category_name: "Groceries", baseline_spent: 3100 }
+    ]
+
+    result = MonthlyPlanning::NextMonthPlanner.new(
+      reference_month: ref,
+      next_month: nxt,
+      spent_run_rate_root: 3100,
+      spent_other_root: 0,
+      inflation_percent: 50,
+      as_of_date: Date.new(2026, 1, 15),
+      simple_fx_rate: 1,
+      run_rate_lines: lines,
+      reference_days_for_run_rate: 31,
+      run_rate_line_inputs: {
+        cid => { "manual" => true, "manual_amount" => "400" }
+      }
+    ).call
+
+    item = result.run_rate_line_items.find { |i| i.category_id == cid }
+    assert item.use_manual
+    assert_equal :manual, item.mode
+    assert_in_delta 400, item.projected_amount.to_f, 0.01
+  end
+
   test "tiered split uses cap at first rate then second" do
     ref = Date.new(2026, 1, 1)
     nxt = Date.new(2026, 2, 1)

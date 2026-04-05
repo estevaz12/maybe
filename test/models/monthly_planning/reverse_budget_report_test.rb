@@ -43,4 +43,26 @@ class MonthlyPlanning::ReverseBudgetReportTest < ActiveSupport::TestCase
 
     assert_equal 50, report.outside_total
   end
+
+  test "uses second_period only for second root bucket" do
+    child_card = @family.categories.create!(name: "Card stuff", classification: "expense", parent: @card, lucide_icon: "shopping-bag")
+    jan = Date.new(2026, 1, 15)
+    feb = Date.new(2026, 2, 10)
+    period_jan = Period.custom(start_date: jan.beginning_of_month, end_date: jan.end_of_month)
+    period_feb_range = Period.custom(start_date: Date.new(2026, 2, 1), end_date: Date.new(2026, 2, 28))
+
+    create_transaction(account: @checking, amount: 100, category: @child_cash, date: jan)
+    create_transaction(account: @checking, amount: 200, category: child_card, date: feb)
+
+    report = MonthlyPlanning::ReverseBudgetReport.new(
+      family: @family,
+      period: period_jan,
+      first_root_id: @cash.id,
+      second_root_id: @card.id,
+      second_period: period_feb_range
+    ).call
+
+    assert_equal 100, report.first_root_total
+    assert_equal 200, report.second_root_total
+  end
 end

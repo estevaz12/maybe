@@ -57,7 +57,7 @@ class Family::DataExporterTest < ActiveSupport::TestCase
 
       # Check categories.csv
       categories_csv = zip.read("categories.csv")
-      assert categories_csv.include?("name,color,parent_category,classification")
+      assert categories_csv.include?("name,color,lucide_icon,parent_category,classification")
     end
   end
 
@@ -76,6 +76,35 @@ class Family::DataExporterTest < ActiveSupport::TestCase
       first_line = JSON.parse(lines.first)
       assert first_line.key?("type")
       assert first_line.key?("data")
+    end
+  end
+
+  test "includes rules in ndjson when family has rules" do
+    groceries = @family.categories.create!(name: "Export Rule Cat")
+    merchant = @family.merchants.create!(name: "Export Merchant", type: "FamilyMerchant")
+    Rule.create!(
+      family: @family,
+      resource_type: "transaction",
+      name: "Export test rule",
+      effective_date: 1.day.ago.to_date,
+      active: false,
+      conditions: [ Rule::Condition.new(condition_type: "transaction_merchant", operator: "=", value: merchant.id) ],
+      actions: [ Rule::Action.new(action_type: "set_transaction_category", value: groceries.id) ]
+    )
+
+    zip_data = @exporter.generate_export
+    Zip::File.open_buffer(zip_data) do |zip|
+      ndjson_content = zip.read("all.ndjson")
+      rule_lines = ndjson_content.split("\n").map { |l| JSON.parse(l) }.select { |o| o["type"] == "Rule" }
+      data = rule_lines.find { |o| o.dig("data", "name") == "Export test rule" }&.fetch("data")
+      assert data
+      assert_equal "transaction", data["resource_type"]
+      assert_equal "Export test rule", data["name"]
+      assert_equal false, data["active"]
+      assert_equal 1, data["conditions"].length
+      assert_equal "transaction_merchant", data["conditions"].first["condition_type"]
+      assert_equal 1, data["actions"].length
+      assert_equal "set_transaction_category", data["actions"].first["action_type"]
     end
   end
 
