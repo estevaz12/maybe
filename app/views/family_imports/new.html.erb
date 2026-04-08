@@ -1,0 +1,70 @@
+<%= render DS::Dialog.new do |dialog| %>
+  <% case @import_scope
+     when "full" %>
+    <% dialog.with_header(
+      title: t("imports.new.import_full_export"),
+      subtitle: t("imports.new.family_import_full_description")
+    ) %>
+  <% when "categories" %>
+    <% dialog.with_header(
+      title: t("imports.new.import_categories"),
+      subtitle: t("imports.new.family_import_categories_description")
+    ) %>
+  <% when "rules" %>
+    <% dialog.with_header(
+      title: t("imports.new.import_rules"),
+      subtitle: t("imports.new.family_import_rules_description")
+    ) %>
+  <% when "monthly_planning" %>
+    <% dialog.with_header(
+      title: t("imports.new.import_monthly_planning"),
+      subtitle: t("imports.new.family_import_monthly_planning_description")
+    ) %>
+  <% end %>
+
+  <% dialog.with_body do %>
+    <div class="space-y-4">
+      <%= form_with model: @family_import, url: family_imports_path, method: :post, html: { multipart: true, class: "space-y-4" } do |f| %>
+        <%= f.hidden_field :import_scope, value: @import_scope %>
+
+        <%= f.file_field :import_file,
+              accept: "application/zip,.zip",
+              required: true,
+              class: "block w-full text-sm text-primary file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-container-inset file:text-primary" %>
+
+        <% if @import_scope.in?(%w[rules full]) %>
+          <div class="space-y-1">
+            <label class="flex items-start gap-2 text-sm text-primary cursor-pointer">
+              <%= f.check_box :replace_rules, class: "mt-1 rounded border-primary" %>
+              <span><%= t("imports.new.family_import_replace_rules") %></span>
+            </label>
+            <p class="text-xs text-secondary pl-7"><%= t("imports.new.family_import_replace_rules_hint") %></p>
+          </div>
+        <% end %>
+
+        <% if @import_scope == "full" %>
+          <div class="space-y-1">
+            <label class="flex items-start gap-2 text-sm text-primary cursor-pointer">
+              <%= f.check_box :replace_financial_data, class: "mt-1 rounded border-primary" %>
+              <span><%= t("imports.new.family_import_replace_financial_data") %></span>
+            </label>
+            <p class="text-xs text-secondary pl-7"><%= t("imports.new.family_import_replace_financial_data_hint") %></p>
+          </div>
+        <% end %>
+
+        <div class="flex gap-3">
+          <%= link_to "Cancel", "#", class: "flex-1 text-center px-4 py-2 border border-primary rounded-lg hover:bg-surface-hover", data: { action: "click->modal#close" } %>
+          <%= f.submit(
+                case @import_scope
+                when "full" then t("imports.new.import_full_export")
+                when "categories" then t("imports.new.import_categories")
+                when "rules" then t("imports.new.import_rules")
+                when "monthly_planning" then t("imports.new.import_monthly_planning")
+                end,
+                class: "flex-1 bg-inverse fg-inverse rounded-lg px-4 py-2 cursor-pointer"
+              ) %>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+<% end %>

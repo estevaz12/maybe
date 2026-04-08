@@ -1,0 +1,99 @@
+<%# locals: (inputs:) %>
+<% raw_ins = inputs || {} %>
+<% ins = raw_ins.respond_to?(:stringify_keys) ? raw_ins.stringify_keys : {} %>
+<% run_rate = ins["run_rate"] %>
+<% top = ins.except("run_rate") %>
+<% root_ids = [ top["first_root_category_id"], top["second_root_category_id"], top["run_rate_root_category_id"] ].compact.uniq %>
+<% root_cats = Current.family.categories.where(id: root_ids).index_by { |c| c.id.to_s } %>
+
+<% label_for = lambda do |key|
+  {
+    "first_root_category_id" => "First group",
+    "second_root_category_id" => "Second group",
+    "run_rate_root_category_id" => "Pace group",
+    "other_root_amount" => "Other group amount",
+    "inflation_percent" => "Inflation (%)",
+    "previous_month_surplus" => "Previous month surplus",
+    "simple_fx_rate" => "Simple FX rate",
+    "tiered_enabled" => "Tiered FX",
+    "tier_first_amount_usd" => "Tier 1 USD cap",
+    "tier_first_ars_per_usd" => "Tier 1 (ARS/USD)",
+    "tier_second_ars_per_usd" => "Tier 2 (ARS/USD)",
+    "second_period_start" => "Second period start",
+    "second_period_end" => "Second period end",
+    "second_root_period_start" => "Second group period start",
+    "second_root_period_end" => "Second group period end"
+  }[key] || key.to_s.humanize
+end %>
+
+<% ordered_keys = %w[
+  first_root_category_id second_root_category_id run_rate_root_category_id
+  other_root_amount inflation_percent previous_month_surplus simple_fx_rate
+  tiered_enabled tier_first_amount_usd tier_first_ars_per_usd tier_second_ars_per_usd
+  second_period_start second_period_end second_root_period_start second_root_period_end
+] %>
+
+<% if top.blank? && run_rate.blank? %>
+  <p class="text-sm text-secondary">No inputs were saved with this snapshot.</p>
+<% else %>
+  <dl class="space-y-3 text-sm">
+    <% ordered_keys.each do |key| %>
+      <% next unless top.key?(key) %>
+      <% val = top[key] %>
+      <% next if val.nil? || val == "" %>
+      <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+        <dt class="text-secondary shrink-0"><%= label_for.call(key) %></dt>
+        <dd class="text-primary font-medium text-right min-w-0">
+          <% if key.end_with?("_category_id") && root_cats[val.to_s] %>
+            <span class="inline-flex justify-end [&>div]:inline-flex">
+              <%= render "categories/badge", category: root_cats[val.to_s] %>
+            </span>
+          <% elsif key == "tiered_enabled" %>
+            <%= ActiveModel::Type::Boolean.new.cast(val) ? "On" : "Off" %>
+          <% else %>
+            <span class="tabular-nums"><%= val.is_a?(Hash) ? val.inspect : val %></span>
+          <% end %>
+        </dd>
+      </div>
+    <% end %>
+    <% (top.keys - ordered_keys).sort.each do |key| %>
+      <% val = top[key] %>
+      <% next if val.nil? || val == "" %>
+      <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+        <dt class="text-secondary shrink-0"><%= label_for.call(key) %></dt>
+        <dd class="text-primary text-right min-w-0 break-all text-xs font-mono"><%= val.is_a?(Hash) ? val.inspect : val %></dd>
+      </div>
+    <% end %>
+  </dl>
+
+  <% if run_rate.is_a?(Hash) && run_rate.any? %>
+    <div class="mt-5 pt-4 border-t border-tertiary">
+      <p class="text-xs font-medium text-secondary uppercase tracking-wide mb-3">Pace overrides</p>
+      <% rr_ids = run_rate.keys.select { |k| k.to_s.match?(/\A[0-9a-f-]{36}\z/i) } %>
+      <% rr_cats = Current.family.categories.where(id: rr_ids).index_by { |c| c.id.to_s } %>
+      <ul class="space-y-2">
+        <% run_rate.sort_by { |cid, _| rr_cats[cid.to_s]&.name || cid.to_s }.each do |cid, attrs| %>
+          <% a = attrs.respond_to?(:stringify_keys) ? attrs.stringify_keys : {} %>
+          <% manual = ActiveModel::Type::Boolean.new.cast(a["manual"]) %>
+          <% cat = rr_cats[cid.to_s] %>
+          <li class="flex flex-wrap items-center justify-between gap-2">
+            <div class="min-w-0 [&>div]:inline-flex">
+              <% if cat %>
+                <%= render "categories/badge", category: cat %>
+              <% else %>
+                <span class="text-xs text-secondary truncate"><%= cid %></span>
+              <% end %>
+            </div>
+            <span class="text-xs text-secondary tabular-nums">
+              <% if manual %>
+                Fixed: <%= a["manual_amount"].presence || "—" %>
+              <% else %>
+                Pace (default)
+              <% end %>
+            </span>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+<% end %>

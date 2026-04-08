@@ -1,7 +1,7 @@
 <%# locals: (planner:, planning_setting: nil) %>
 <% other_root = monthly_planning_other_root(planning_setting) %>
 
-<div class="space-y-6 pt-4">
+<div class="space-y-6">
   <div>
     <p class="text-sm text-secondary">Estimated total for next month</p>
     <p class="mt-1 text-3xl font-semibold text-primary tabular-nums tracking-tight">
@@ -13,7 +13,7 @@
         <%= render "categories/badge", category: planning_setting.run_rate_root %>
         <span class="text-secondary">+</span>
         <%= render "categories/badge", category: other_root %>
-        <span class="text-secondary">(last period)</span>
+        <span class="text-secondary">(other amount is manual)</span>
       </div>
     <% end %>
   </div>
@@ -112,7 +112,7 @@
         </div>
       <% end %>
       <div class="flex justify-between gap-4">
-        <span class="text-secondary">Other group (last period)</span>
+        <span class="text-secondary">Other group (manual)</span>
         <span class="tabular-nums text-primary font-medium"><%= Money.new(planner.spent_other_root, Current.family.currency).format %></span>
       </div>
     </div>

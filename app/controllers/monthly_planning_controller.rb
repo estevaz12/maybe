@@ -77,15 +77,12 @@ class MonthlyPlanningController < ApplicationController
 
     def populate_monthly_planning_assigns
       @period = Period.custom(start_date: @reference_month.beginning_of_month, end_date: @reference_month.end_of_month)
-      @second_period_for_report = resolved_second_root_period
-      @second_period_start_value = params.dig(:planning, :second_period_start).presence || @setting.second_root_period_start&.strftime("%Y-%m-%d")
-      @second_period_end_value = params.dig(:planning, :second_period_end).presence || @setting.second_root_period_end&.strftime("%Y-%m-%d")
+      @uncategorized_transactions_count = uncategorized_transactions_count_in_period(@period)
       @report = MonthlyPlanning::ReverseBudgetReport.new(
         family: Current.family,
         period: @period,
-        first_root_id: @setting.first_root_category_id,
-        second_root_id: @setting.second_root_category_id,
-        second_period: @second_period_for_report
+        project_root_id: @setting.run_rate_root_category_id,
+        other_root_id: monthly_planning_other_root_id(@setting)
       ).call
 
       @next_month = @reference_month.next_month.beginning_of_month
@@ -103,9 +100,7 @@ class MonthlyPlanningController < ApplicationController
       params.require(:family_monthly_planning_setting).permit(
         :first_root_category_id,
         :second_root_category_id,
-        :run_rate_root_category_id,
-        :second_root_period_start,
-        :second_root_period_end
+        :run_rate_root_category_id
       )
     end
 
@@ -113,57 +108,52 @@ class MonthlyPlanningController < ApplicationController
       p = params[:planning]&.permit(
         :inflation_percent,
         :previous_month_surplus,
+        :other_root_amount,
         :simple_fx_rate,
         :tiered_enabled,
         :tier_first_amount_usd,
         :tier_first_ars_per_usd,
-        :tier_second_ars_per_usd,
-        :second_period_start,
-        :second_period_end
+        :tier_second_ars_per_usd
       )&.to_h
       p ||= {}
       p[:inflation_percent] = (p[:inflation_percent].presence || 0).to_s
       p[:previous_month_surplus] = (p[:previous_month_surplus].presence || 0).to_s
+      p[:other_root_amount] = (p[:other_root_amount].presence || 0).to_s
       p[:tiered_enabled] = ActiveModel::Type::Boolean.new.cast(p[:tiered_enabled])
       p[:run_rate] = run_rate_inputs_from_request
       p
     end
 
-    def resolved_second_root_period
-      start_d = parse_planning_date(params.dig(:planning, :second_period_start)) || @setting.second_root_period_start
-      end_d = parse_planning_date(params.dig(:planning, :second_period_end)) || @setting.second_root_period_end
-      return @period if start_d.blank? || end_d.blank?
-      return @period if end_d < start_d
-
-      Period.custom(start_date: start_d, end_date: end_d)
+    # Matches Transaction::Search when filtering by "Uncategorized": nil category excluding
+    # transfer/payment kinds that are omitted from that filter (same as income statement).
+    def uncategorized_transactions_count_in_period(period)
+      Current.family.transactions.visible
+        .in_period(period)
+        .where(category_id: nil)
+        .where.not(kind: Transaction::EXCLUDED_ANALYTICS_KINDS)
+        .count
     end
 
-    def parse_planning_date(value)
-      return if value.blank?
+    def monthly_planning_other_root_id(setting)
+      return if setting.blank? || setting.run_rate_root_category_id.blank?
 
-      value.to_date
-    rescue ArgumentError, TypeError
-      nil
+      if setting.run_rate_root_category_id == setting.first_root_category_id
+        setting.second_root_category_id
+      else
+        setting.first_root_category_id
+      end
     end
 
     def run_rate_report_lines
       return [] unless @setting.run_rate_root_category_id.present?
 
-      if @setting.run_rate_root_category_id == @setting.first_root_category_id
-        @report.first_root_lines
-      else
-        @report.second_root_lines
-      end
+      @report.projected_lines
     end
 
     def reference_days_for_run_rate
       return unless @setting.run_rate_root_category_id.present?
 
-      if @setting.run_rate_root_category_id == @setting.first_root_category_id
-        @period.days
-      else
-        @second_period_for_report.days
-      end
+      @period.days
     end
 
     def run_rate_inputs_from_request
@@ -184,16 +174,8 @@ class MonthlyPlanningController < ApplicationController
     end
 
     def build_planner
-      run_spent = if @setting.run_rate_root_category_id == @setting.first_root_category_id
-        @report.first_root_total
-      else
-        @report.second_root_total
-      end
-      other_spent = if @setting.run_rate_root_category_id == @setting.first_root_category_id
-        @report.second_root_total
-      else
-        @report.first_root_total
-      end
+      run_spent = @report.projected_total
+      other_spent = planning_params_hash[:other_root_amount].to_d
 
       line_hashes = @run_rate_report_lines.map do |l|
         { category_id: l.category_id, category_name: l.category_name, baseline_spent: l.total }
@@ -222,11 +204,7 @@ class MonthlyPlanningController < ApplicationController
       planning_params_hash.merge(
         "first_root_category_id" => @setting.first_root_category_id,
         "second_root_category_id" => @setting.second_root_category_id,
-        "run_rate_root_category_id" => @setting.run_rate_root_category_id,
-        "second_root_period_start" => @setting.second_root_period_start&.to_s,
-        "second_root_period_end" => @setting.second_root_period_end&.to_s,
-        "second_period_start" => @second_period_start_value,
-        "second_period_end" => @second_period_end_value
+        "run_rate_root_category_id" => @setting.run_rate_root_category_id
       )
     end
 
@@ -256,7 +234,14 @@ class MonthlyPlanningController < ApplicationController
         "tiered_breakdown" => @planner.tiered_breakdown,
         "uses_line_breakdown" => @planner.uses_line_breakdown,
         "run_rate_line_items" => line_items,
-        "pace_reference_days" => @planner.pace_reference_days.to_s
+        "pace_reference_days" => @planner.pace_reference_days.to_s,
+        "reference_month" => @reference_month.to_date.to_fs(:db),
+        "next_month" => @next_month.to_date.to_fs(:db),
+        "days_in_reference_month" => @planner.days_in_reference_month.to_s,
+        "days_in_next_month" => @planner.days_in_next_month.to_s,
+        "inflation_multiplier" => @planner.inflation_multiplier.to_s,
+        "previous_month_surplus" => @planner.previous_month_surplus.to_s,
+        "spent_other_root" => @planner.spent_other_root.to_s
       }.compact
     end
 end

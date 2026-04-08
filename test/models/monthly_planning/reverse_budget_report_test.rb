@@ -14,55 +14,100 @@ class MonthlyPlanning::ReverseBudgetReportTest < ActiveSupport::TestCase
     @period = Period.custom(start_date: Date.current.beginning_of_month, end_date: Date.current.end_of_month)
   end
 
-  test "buckets leaf spending under configured roots" do
+  test "excludes one-time transactions from totals" do
+    create_transaction(account: @checking, amount: 100, category: @child_cash, date: Date.current)
+    create_transaction(account: @checking, amount: 999, category: @child_cash, date: Date.current, kind: "one_time")
+
+    report = MonthlyPlanning::ReverseBudgetReport.new(
+      family: @family,
+      period: @period,
+      project_root_id: @cash.id
+    ).call
+
+    assert_equal 100, report.projected_total
+  end
+
+  test "uses gross expense bucket for category (refunds do not net into projected baselines)" do
+    create_transaction(account: @checking, amount: 100, category: @child_cash, date: Date.current)
+    create_transaction(account: @checking, amount: -30, category: @child_cash, date: Date.current)
+
+    report = MonthlyPlanning::ReverseBudgetReport.new(
+      family: @family,
+      period: @period,
+      project_root_id: @cash.id
+    ).call
+
+    assert_equal 100, report.projected_total
+    assert_equal 100, report.projected_lines.first.total
+  end
+
+  test "buckets leaf spending under project root" do
     create_transaction(account: @checking, amount: 100, category: @child_cash, date: Date.current)
 
     report = MonthlyPlanning::ReverseBudgetReport.new(
       family: @family,
       period: @period,
-      first_root_id: @cash.id,
-      second_root_id: @card.id
+      project_root_id: @cash.id
     ).call
 
-    assert_equal 100, report.first_root_total
-    assert_equal 0, report.second_root_total
+    assert_equal 100, report.projected_total
     assert_equal 0, report.outside_total
-    assert_equal 1, report.first_root_lines.size
+    assert_equal 1, report.projected_lines.size
   end
 
-  test "sends spending outside roots to outside bucket" do
+  test "sends spending outside project tree to outside bucket" do
     other = @family.categories.create!(name: "Other", classification: "expense", lucide_icon: "circle")
     create_transaction(account: @checking, amount: 50, category: other, date: Date.current)
 
     report = MonthlyPlanning::ReverseBudgetReport.new(
       family: @family,
       period: @period,
-      first_root_id: @cash.id,
-      second_root_id: @card.id
+      project_root_id: @cash.id,
+      other_root_id: @card.id
     ).call
 
+    assert_equal 0, report.projected_total
     assert_equal 50, report.outside_total
   end
 
-  test "uses second_period only for second root bucket" do
-    child_card = @family.categories.create!(name: "Card stuff", classification: "expense", parent: @card, lucide_icon: "shopping-bag")
-    jan = Date.new(2026, 1, 15)
-    feb = Date.new(2026, 2, 10)
-    period_jan = Period.custom(start_date: jan.beginning_of_month, end_date: jan.end_of_month)
-    period_feb_range = Period.custom(start_date: Date.new(2026, 2, 1), end_date: Date.new(2026, 2, 28))
-
-    create_transaction(account: @checking, amount: 100, category: @child_cash, date: jan)
-    create_transaction(account: @checking, amount: 200, category: child_card, date: feb)
+  test "does not list second group child categories as outside" do
+    child_card = @family.categories.create!(name: "Card line item", classification: "expense", parent: @card, lucide_icon: "circle")
+    create_transaction(account: @checking, amount: 40, category: child_card, date: Date.current)
 
     report = MonthlyPlanning::ReverseBudgetReport.new(
       family: @family,
-      period: period_jan,
-      first_root_id: @cash.id,
-      second_root_id: @card.id,
-      second_period: period_feb_range
+      period: @period,
+      project_root_id: @cash.id,
+      other_root_id: @card.id
     ).call
 
-    assert_equal 100, report.first_root_total
-    assert_equal 200, report.second_root_total
+    assert_equal 0, report.projected_total
+    assert_equal 0, report.outside_total
+    assert_empty report.outside_lines
+  end
+
+  test "counts uncategorized spending in outside bucket without raising" do
+    create_transaction(account: @checking, amount: 25, date: Date.current)
+
+    report = MonthlyPlanning::ReverseBudgetReport.new(
+      family: @family,
+      period: @period,
+      project_root_id: @cash.id
+    ).call
+
+    assert_equal 25, report.outside_total
+    assert_equal 1, report.outside_lines.size
+    assert_equal "Uncategorized", report.outside_lines.first.category_name
+  end
+
+  test "returns empty when project_root_id is blank" do
+    report = MonthlyPlanning::ReverseBudgetReport.new(
+      family: @family,
+      period: @period,
+      project_root_id: nil
+    ).call
+
+    assert_equal 0, report.projected_total
+    assert_equal 0, report.outside_total
   end
 end

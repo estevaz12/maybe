@@ -19,7 +19,9 @@ class FamilyDataImportJob < ApplicationJob
     io = StringIO.new(family_import.import_file.download)
     result = Family::DataImporter.new(family_import.family).import_from_zip_io(
       io,
-      replace_rules: family_import.replace_rules
+      replace_rules: %w[rules full].include?(family_import.import_scope) && family_import.replace_rules,
+      replace_financial_data: family_import.import_scope == "full" && family_import.replace_financial_data,
+      import_scope: family_import.import_scope
     )
 
     if result.success

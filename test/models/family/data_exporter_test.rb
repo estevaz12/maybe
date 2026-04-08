@@ -79,6 +79,77 @@ class Family::DataExporterTest < ActiveSupport::TestCase
     end
   end
 
+  test "includes monthly planning setting and snapshots in ndjson" do
+    root_a = @family.categories.create!(name: "MPS Export Root A", color: "#010101", lucide_icon: "circle")
+    root_b = @family.categories.create!(name: "MPS Export Root B", color: "#020202", lucide_icon: "square")
+    FamilyMonthlyPlanningSetting.create!(
+      family: @family,
+      first_root_category_id: root_a.id,
+      second_root_category_id: root_b.id,
+      run_rate_root_category_id: root_a.id
+    )
+    MonthlyPlanningSnapshot.create!(
+      family: @family,
+      reference_month: Date.new(2026, 2, 1),
+      inputs: { "inflation_percent" => "4" },
+      outputs: { root_a.id.to_s => { "total" => "99" } }
+    )
+
+    zip_data = @exporter.generate_export
+    Zip::File.open_buffer(zip_data) do |zip|
+      ndjson_content = zip.read("all.ndjson")
+      parsed = ndjson_content.split("\n").map { |l| JSON.parse(l) }
+      types = parsed.pluck("type")
+
+      assert_includes types, "FamilyMonthlyPlanningSetting"
+      assert_includes types, "MonthlyPlanningSnapshot"
+
+      setting = parsed.find { |o| o["type"] == "FamilyMonthlyPlanningSetting" }["data"]
+      assert_equal root_a.id.to_s, setting["first_root_category_id"]
+      assert_equal root_b.id.to_s, setting["second_root_category_id"]
+
+      snap = parsed.find { |o| o["type"] == "MonthlyPlanningSnapshot" }["data"]
+      assert_equal Date.new(2026, 2, 1), Date.iso8601(snap["reference_month"].to_s).beginning_of_month
+      assert_equal "4", snap.dig("inputs", "inflation_percent")
+      assert_equal "99", snap.dig("outputs", root_a.id.to_s, "total")
+    end
+  end
+
+  test "includes transfers in ndjson when family has transfers" do
+    checking = @family.accounts.create!(
+      name: "Checking T",
+      accountable: Depository.new,
+      balance: 2000,
+      currency: "USD"
+    )
+    savings = @family.accounts.create!(
+      name: "Savings T",
+      accountable: Depository.new,
+      balance: 500,
+      currency: "USD"
+    )
+    transfer = Transfer::Creator.new(
+      family: @family,
+      source_account_id: checking.id,
+      destination_account_id: savings.id,
+      date: Date.new(2026, 3, 10),
+      amount: 25
+    ).create
+    assert transfer.persisted?, transfer.errors.full_messages.join(", ")
+
+    zip_data = @exporter.generate_export
+    Zip::File.open_buffer(zip_data) do |zip|
+      ndjson_content = zip.read("all.ndjson")
+      transfer_lines = ndjson_content.split("\n").map { |l| JSON.parse(l) }.select { |o| o["type"] == "Transfer" }
+      data = transfer_lines.find { |o|
+        o["data"]["inflow_transaction_id"] == transfer.inflow_transaction_id.to_s
+      }&.fetch("data")
+      assert data, "expected export to include created transfer"
+      assert_equal transfer.outflow_transaction_id.to_s, data["outflow_transaction_id"]
+      assert_equal "confirmed", data["status"]
+    end
+  end
+
   test "includes rules in ndjson when family has rules" do
     groceries = @family.categories.create!(name: "Export Rule Cat")
     merchant = @family.merchants.create!(name: "Export Merchant", type: "FamilyMerchant")

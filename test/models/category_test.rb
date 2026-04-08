@@ -30,4 +30,21 @@ class CategoryTest < ActiveSupport::TestCase
 
     assert_equal "Validation failed: Parent can't have more than 2 levels of subcategories", error.message
   end
+
+  test "subcategory keeps its own color instead of parent's" do
+    parent = categories(:food_and_drink)
+    child_color = "#c44fe9"
+    assert parent.color != child_color
+
+    sub = @family.categories.create!(
+      name: "Coffee Shops",
+      parent: parent,
+      color: child_color,
+      lucide_icon: "coffee"
+    )
+
+    sub.reload
+    assert_equal child_color, sub.color
+    assert_equal parent.color, parent.reload.color
+  end
 end

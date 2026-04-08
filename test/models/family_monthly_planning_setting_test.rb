@@ -40,30 +40,4 @@ class FamilyMonthlyPlanningSettingTest < ActiveSupport::TestCase
     assert_not s.valid?
     assert_includes s.errors[:second_root_category_id], "must be different from the first root"
   end
-
-  test "second root period requires both dates or neither" do
-    s = FamilyMonthlyPlanningSetting.new(
-      family: @family,
-      first_root: @a,
-      second_root: @b,
-      run_rate_root: @a,
-      second_root_period_start: Date.new(2026, 1, 10),
-      second_root_period_end: nil
-    )
-    assert_not s.valid?
-    assert_includes s.errors[:base], "Second group period needs both start and end dates, or leave both blank."
-  end
-
-  test "second root period end must be on or after start" do
-    s = FamilyMonthlyPlanningSetting.new(
-      family: @family,
-      first_root: @a,
-      second_root: @b,
-      run_rate_root: @a,
-      second_root_period_start: Date.new(2026, 2, 1),
-      second_root_period_end: Date.new(2026, 1, 1)
-    )
-    assert_not s.valid?
-    assert_includes s.errors[:second_root_period_end], "must be on or after start date"
-  end
 end

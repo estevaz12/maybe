@@ -37,7 +37,7 @@ export default class extends Controller {
         this.colorInputTarget.reportValidity();
         e.target.open = true;
       }
-      this.updatePopupPosition()
+      this.updatePopupPosition();
     });
 
     this.selectedIcon = null;
@@ -150,13 +150,6 @@ export default class extends Controller {
     this.picker.setColor(adjustedRGBA);
   }
 
-  handleParentChange(e) {
-    const parent = e.currentTarget.value;
-    const display =
-      typeof parent === "string" && parent !== "" ? "none" : "flex";
-    this.selectionTarget.style.display = display;
-  }
-
   backgroundColor([r, g, b, a], percentage) {
     const mixedR = Math.round(
       r * (percentage / 100) + 255 * (1 - percentage / 100),
@@ -221,7 +214,7 @@ export default class extends Controller {
     this.colorsSectionTarget.classList.remove("hidden");
     this.paletteSectionTarget.classList.add("hidden");
     this.pickerSectionTarget.classList.add("hidden");
-    this.updatePopupPosition()
+    this.updatePopupPosition();
     if (this.picker) {
       this.picker.destroyAndRemove();
     }

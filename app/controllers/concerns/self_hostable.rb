@@ -1,3 +1,5 @@
+require "redis_client"
+
 module SelfHostable
   extend ActiveSupport::Concern
 
@@ -35,9 +37,14 @@ module SelfHostable
     end
 
     def redis_connected?
-      Redis.new.ping
-      true
-    rescue Redis::CannotConnectError
+      redis = Redis.new(
+        url: ENV.fetch("REDIS_URL", "redis://127.0.0.1:6379/1"),
+        connect_timeout: 2,
+        read_timeout: 2,
+        write_timeout: 2
+      )
+      redis.ping == "PONG"
+    rescue Redis::BaseConnectionError, RedisClient::ConnectionError
       false
     end
 end

@@ -1,4 +1,6 @@
 class FamilyImport < ApplicationRecord
+  IMPORT_SCOPES = %w[full categories rules monthly_planning].freeze
+
   belongs_to :family
 
   has_one_attached :import_file
@@ -11,6 +13,8 @@ class FamilyImport < ApplicationRecord
   }, default: :pending, validate: true
 
   scope :ordered, -> { order(created_at: :desc) }
+
+  validates :import_scope, presence: true, inclusion: { in: IMPORT_SCOPES }
 
   validate :import_file_attached, on: :create
   validate :import_file_size, on: :create

@@ -3,6 +3,8 @@
 require "test_helper"
 
 class MonthlyPlanningControllerTest < ActionDispatch::IntegrationTest
+  include EntriesTestHelper
+
   setup do
     sign_in users(:family_admin)
   end
@@ -15,6 +17,25 @@ class MonthlyPlanningControllerTest < ActionDispatch::IntegrationTest
   test "show with month param" do
     get monthly_planning_url(Budget.date_to_param(Date.new(2026, 2, 1)))
     assert_response :success
+  end
+
+  test "shows uncategorized warning when reference month has uncategorized transactions" do
+    ref = Date.new(2026, 2, 10)
+    create_transaction(account: accounts(:depository), amount: 10, date: ref)
+
+    get monthly_planning_url(Budget.date_to_param(ref))
+    assert_response :success
+    assert_match "Uncategorized transactions", response.body
+    assert_match "View in Transactions", response.body
+  end
+
+  test "does not count cc_payment and other excluded kinds as uncategorized" do
+    ref = Date.new(2030, 6, 10)
+    create_transaction(account: accounts(:depository), amount: 50, date: ref, kind: "cc_payment")
+
+    get monthly_planning_url(Budget.date_to_param(ref))
+    assert_response :success
+    assert_no_match "Uncategorized transactions in", response.body
   end
 
   test "preview returns projection html json" do
@@ -98,8 +119,9 @@ class MonthlyPlanningControllerTest < ActionDispatch::IntegrationTest
 
     get monthly_planning_snapshot_url(snap)
     assert_response :success
-    assert_match "Saved snapshot", response.body
-    assert_match "Inflation percent", response.body
+    assert_match "January 2026 snapshot", response.body
+    assert_match "Inflation (%)", response.body
+    assert_match "Estimated total for next month", response.body
   end
 
   test "cannot view another familys snapshot" do

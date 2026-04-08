@@ -1,60 +1,41 @@
-<% title "Monthly planning snapshot" %>
+<% title "#{@snapshot.reference_month.strftime('%B %Y')} snapshot" %>
 
 <div class="max-w-3xl mx-auto space-y-8 pb-16 px-3">
-  <header class="space-y-2">
-    <p class="text-sm text-secondary">
-      <%= link_to "← Back to monthly planning", monthly_planning_path(Budget.date_to_param(@snapshot.reference_month)), class: "text-link" %>
-    </p>
-    <h1 class="text-2xl font-medium text-primary">Saved snapshot</h1>
-    <p class="text-sm text-secondary">
-      Reference month: <span class="text-primary font-medium"><%= @snapshot.reference_month.strftime("%B %Y") %></span>
-      · Saved <%= @snapshot.created_at.strftime("%Y-%m-%d %H:%M") %>
-    </p>
+  <header class="space-y-3">
+    <%= link_to monthly_planning_path(Budget.date_to_param(@snapshot.reference_month)), class: "inline-flex items-center gap-1 text-sm text-link" do %>
+      <%= icon "chevron-left", size: "sm" %>
+      Plan next month
+    <% end %>
+    <div>
+      <h1 class="text-2xl font-medium text-primary"><%= @snapshot.reference_month.strftime("%B %Y") %> snapshot</h1>
+      <p class="text-sm text-secondary mt-1">
+        Saved <%= @snapshot.created_at.strftime("%b %-d, %Y · %H:%M") %>
+      </p>
+    </div>
   </header>
 
-  <section class="bg-container border border-primary rounded-xl p-4 shadow-border-xs space-y-3">
+  <section class="rounded-xl border border-primary bg-container p-5 space-y-4">
     <h2 class="text-lg font-medium text-primary">Inputs</h2>
-    <% if @snapshot.inputs.blank? %>
-      <p class="text-sm text-secondary">No inputs recorded.</p>
-    <% else %>
-      <dl class="grid gap-2 text-sm text-primary">
-        <% @snapshot.inputs.sort_by { |k, _| k.to_s }.each do |key, value| %>
-          <div class="flex justify-between gap-4 border-b border-primary/50 pb-2">
-            <dt class="text-secondary"><%= key.to_s.humanize %></dt>
-            <dd class="text-right font-mono text-xs break-all"><%= value.is_a?(Hash) ? value.inspect : value %></dd>
-          </div>
-        <% end %>
-      </dl>
-    <% end %>
+    <%= render "monthly_planning/snapshot_inputs", inputs: @snapshot.inputs %>
   </section>
 
-  <section class="bg-container border border-primary rounded-xl p-4 shadow-border-xs space-y-3">
-    <h2 class="text-lg font-medium text-primary">Computed outputs</h2>
-    <% if @snapshot.outputs.blank? %>
-      <p class="text-sm text-secondary">No outputs recorded.</p>
-    <% else %>
-      <dl class="grid gap-2 text-sm text-primary">
-        <% @snapshot.outputs.except("tiered_breakdown").sort_by { |k, _| k.to_s }.each do |key, value| %>
-          <div class="flex justify-between gap-4 border-b border-primary/50 pb-2">
-            <dt class="text-secondary"><%= key.to_s.humanize %></dt>
-            <dd class="text-right"><%= value %></dd>
-          </div>
-        <% end %>
-      </dl>
-      <% tiered = @snapshot.outputs["tiered_breakdown"] %>
-      <% if tiered.present? %>
-        <div class="mt-4 border border-primary rounded-lg p-3 text-sm text-primary">
-          <p class="font-medium mb-2">Tiered breakdown</p>
-          <dl class="grid gap-1">
-            <% tiered.each do |k, v| %>
-              <div class="flex justify-between gap-4">
-                <dt class="text-secondary"><%= k.to_s.humanize %></dt>
-                <dd><%= v %></dd>
-              </div>
-            <% end %>
-          </dl>
-        </div>
-      <% end %>
-    <% end %>
-  </section>
+  <% if @snapshot.outputs.present? %>
+    <% ins = (@snapshot.inputs || {}).stringify_keys %>
+    <% snapshot_setting = FamilyMonthlyPlanningSetting.new(
+         family: Current.family,
+         first_root_category_id: ins["first_root_category_id"],
+         second_root_category_id: ins["second_root_category_id"],
+         run_rate_root_category_id: ins["run_rate_root_category_id"]
+       ) %>
+    <section class="rounded-xl border border-primary bg-container p-5 space-y-4">
+      <h2 class="text-lg font-medium text-primary">Estimate at save time</h2>
+      <%= render "projection_results",
+            planner: MonthlyPlanning::SnapshotPlannerView.new(@snapshot),
+            planning_setting: snapshot_setting %>
+    </section>
+  <% else %>
+    <section class="rounded-xl border border-primary bg-container p-5">
+      <p class="text-sm text-secondary">No projection outputs were stored for this snapshot.</p>
+    </section>
+  <% end %>
 </div>

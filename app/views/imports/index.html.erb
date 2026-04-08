@@ -10,6 +10,40 @@
   ) %>
 </div>
 
+<div class="bg-container shadow-border-xs rounded-xl p-4 mb-6">
+  <div class="rounded-xl bg-container-inset p-1">
+    <div class="px-4 pt-3 pb-2 space-y-2">
+      <h2 class="uppercase text-secondary text-xs font-medium">Maybe export (zip)</h2>
+      <p class="text-sm text-secondary">
+        Use the zip from <strong class="text-primary font-medium">Settings → Profile → Export data</strong>.
+        One upload restores categories, rules, monthly planning, and (into an empty family, or after you allow deleting existing data) accounts, transactions, trades, transfers, and budgets.
+        You can still use <strong class="text-primary font-medium">New import</strong> below for CSV-only flows.
+      </p>
+      <% if Current.user.admin? %>
+        <div class="pt-1">
+          <%= render DS::Link.new(
+                text: t("imports.new.import_full_export"),
+                href: new_family_import_path(scope: "full"),
+                variant: "secondary",
+                size: "sm",
+                frame: :modal
+              ) %>
+        </div>
+      <% else %>
+        <p class="text-sm text-secondary pt-1">
+          Only a <strong class="text-primary font-medium">family admin</strong> can upload export zips. Ask your household admin to sign in and open this page, or have them promote your account to admin in Settings.
+        </p>
+      <% end %>
+    </div>
+
+    <%= turbo_frame_tag "family_imports", src: family_imports_path, loading: :lazy do %>
+      <div class="px-4 py-6 text-center text-secondary">
+        <div class="animate-spin inline-block h-4 w-4 border-2 border-secondary border-t-transparent rounded-full"></div>
+      </div>
+    <% end %>
+  </div>
+</div>
+
 <div class="bg-container shadow-border-xs rounded-xl p-4">
   <% if @imports.empty? %>
     <%= render partial: "imports/empty" %>

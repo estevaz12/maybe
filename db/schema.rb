@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_04_05_123000) do
+ActiveRecord::Schema[7.2].define(version: 2026_04_08_140000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -285,6 +285,8 @@ ActiveRecord::Schema[7.2].define(version: 2026_04_05_123000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.boolean "replace_rules", default: false, null: false
+    t.string "import_scope", default: "rules", null: false
+    t.boolean "replace_financial_data", default: false, null: false
     t.index ["family_id"], name: "index_family_imports_on_family_id"
   end
 
@@ -295,8 +297,6 @@ ActiveRecord::Schema[7.2].define(version: 2026_04_05_123000) do
     t.uuid "run_rate_root_category_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.date "second_root_period_start"
-    t.date "second_root_period_end"
     t.index ["family_id"], name: "index_family_monthly_planning_settings_on_family_id", unique: true
   end
 

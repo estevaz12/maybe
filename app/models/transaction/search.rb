@@ -47,8 +47,8 @@ class Transaction::Search
       Rails.cache.fetch("transaction_search_totals/#{cache_key_base}") do
         result = transactions_scope
                   .select(
-                    "COALESCE(SUM(CASE WHEN entries.amount >= 0 AND transactions.kind NOT IN ('funds_movement', 'cc_payment') THEN ABS(entries.amount * COALESCE(er.rate, 1)) ELSE 0 END), 0) as expense_total",
-                    "COALESCE(SUM(CASE WHEN entries.amount < 0 AND transactions.kind NOT IN ('funds_movement', 'cc_payment') THEN ABS(entries.amount * COALESCE(er.rate, 1)) ELSE 0 END), 0) as income_total",
+                    "COALESCE(SUM(CASE WHEN entries.amount >= 0 AND transactions.kind NOT IN (#{Transaction.sql_excluded_analytics_kinds_in_list}) THEN ABS(entries.amount * COALESCE(er.rate, 1)) ELSE 0 END), 0) as expense_total",
+                    "COALESCE(SUM(CASE WHEN entries.amount < 0 AND transactions.kind NOT IN (#{Transaction.sql_excluded_analytics_kinds_in_list}) THEN ABS(entries.amount * COALESCE(er.rate, 1)) ELSE 0 END), 0) as income_total",
                     "COUNT(entries.id) as transactions_count"
                   )
                   .joins(
@@ -93,7 +93,7 @@ class Transaction::Search
 
       query = query.left_joins(:category).where(
         "categories.name IN (?) OR (
-        categories.id IS NULL AND (transactions.kind NOT IN ('funds_movement', 'cc_payment'))
+        categories.id IS NULL AND (transactions.kind NOT IN (#{Transaction.sql_excluded_analytics_kinds_in_list}))
       )",
         categories
       )

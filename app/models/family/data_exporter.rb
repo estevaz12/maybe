@@ -187,6 +187,22 @@ class Family::DataExporter
         }.to_json
       end
 
+      # Transfers link two exported transactions by id (for full restore)
+      family_txn_ids = @family.transactions
+      Transfer
+        .where(inflow_transaction_id: family_txn_ids.select(:id))
+        .where(outflow_transaction_id: family_txn_ids.select(:id))
+        .find_each do |transfer|
+        lines << {
+          type: "Transfer",
+          data: {
+            inflow_transaction_id: transfer.inflow_transaction_id,
+            outflow_transaction_id: transfer.outflow_transaction_id,
+            status: transfer.status
+          }
+        }.to_json
+      end
+
       # Export trades with full data
       @family.trades.includes(:security, entry: :account).find_each do |trade|
         lines << {
@@ -239,6 +255,21 @@ class Family::DataExporter
         lines << {
           type: "BudgetCategory",
           data: budget_category.as_json
+        }.to_json
+      end
+
+      # Monthly planning (settings + saved snapshots for restore on another instance)
+      if (mps = @family.family_monthly_planning_setting)
+        lines << {
+          type: "FamilyMonthlyPlanningSetting",
+          data: mps.as_json
+        }.to_json
+      end
+
+      @family.monthly_planning_snapshots.find_each do |snapshot|
+        lines << {
+          type: "MonthlyPlanningSnapshot",
+          data: snapshot.as_json
         }.to_json
       end
 

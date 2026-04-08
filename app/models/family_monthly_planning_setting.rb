@@ -9,7 +9,6 @@ class FamilyMonthlyPlanningSetting < ApplicationRecord
   validate :roots_belong_to_family
   validate :run_rate_matches_a_root
   validate :distinct_roots
-  validate :second_root_period_pair
 
   private
 
@@ -33,16 +32,5 @@ class FamilyMonthlyPlanningSetting < ApplicationRecord
       unless [ first_root_category_id, second_root_category_id ].include?(run_rate_root_category_id)
         errors.add(:run_rate_root, "must be the first or second root category")
       end
-    end
-
-    def second_root_period_pair
-      start_d = second_root_period_start
-      end_d = second_root_period_end
-      return if start_d.blank? && end_d.blank?
-      if start_d.blank? || end_d.blank?
-        errors.add(:base, "Second group period needs both start and end dates, or leave both blank.")
-        return
-      end
-      errors.add(:second_root_period_end, "must be on or after start date") if end_d < start_d
     end
 end

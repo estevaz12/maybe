@@ -30,7 +30,7 @@ Rails.application.routes.draw do
     end
   end
 
-  resources :family_imports, only: %i[create index]
+  resources :family_imports, only: %i[new create index]
 
   get "changelog", to: "pages#changelog"
   get "feedback", to: "pages#feedback"

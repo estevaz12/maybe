@@ -85,6 +85,26 @@
           </li>
         <% end %>
 
+        <% if Current.user.admin? && (params[:type].nil? || params[:type] == "FamilyImportFull") %>
+          <li>
+            <%= link_to new_family_import_path(scope: "full"), class: "flex items-center justify-between p-4 group cursor-pointer", data: { turbo_frame: :modal } do %>
+              <div class="flex items-center gap-2">
+                <div class="bg-emerald-500/5 rounded-md w-8 h-8 flex items-center justify-center">
+                  <span class="text-emerald-500">
+                    <%= icon("package", color: "current") %>
+                  </span>
+                </div>
+                <span class="text-sm text-primary group-hover:text-secondary">
+                  <%= t(".import_full_export") %>
+                </span>
+              </div>
+              <%= icon("chevron-right") %>
+            <% end %>
+
+            <%= render "shared/ruler" %>
+          </li>
+        <% end %>
+
         <% if Current.family.accounts.any? && (params[:type].nil? || params[:type] == "MintImport" || params[:type] == "TransactionImport") %>
           <li>
             <%= button_to imports_path(import: { type: "MintImport" }), class: "flex items-center justify-between p-4 group w-full", data: { turbo: false } do %>

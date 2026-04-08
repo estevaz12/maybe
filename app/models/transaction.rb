@@ -17,6 +17,13 @@ class Transaction < ApplicationRecord
     one_time: "one_time" # A one-time expense/income, excluded from budget analytics
   }
 
+  # Kinds excluded from income statement, monthly planning net baselines, and transaction search totals.
+  EXCLUDED_ANALYTICS_KINDS = %w[funds_movement one_time cc_payment].freeze
+
+  def self.sql_excluded_analytics_kinds_in_list
+    EXCLUDED_ANALYTICS_KINDS.map { |k| ActiveRecord::Base.connection.quote(k) }.join(", ")
+  end
+
   # Overarching grouping method for all transfer-type transactions
   def transfer?
     funds_movement? || cc_payment? || loan_payment?

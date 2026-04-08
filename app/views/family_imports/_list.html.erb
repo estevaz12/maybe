@@ -9,8 +9,20 @@
         <div class="flex items-center justify-between bg-container p-4 rounded-lg border border-primary">
           <div>
             <p class="text-sm font-medium text-primary">Import from <%= import.created_at.strftime("%B %d, %Y at %I:%M %p") %></p>
-            <% if import.replace_rules %>
+            <p class="text-xs text-secondary">
+              <%= case import.import_scope
+                  when "full" then "Full export (zip)"
+                  when "categories" then "Categories"
+                  when "rules" then "Rules"
+                  when "monthly_planning" then "Monthly planning"
+                  else import.import_scope.to_s.humanize
+                  end %>
+            </p>
+            <% if import.import_scope.in?(%w[rules full]) && import.replace_rules %>
               <p class="text-xs text-secondary">Replace all rules: yes</p>
+            <% end %>
+            <% if import.import_scope == "full" && import.replace_financial_data %>
+              <p class="text-xs text-secondary">Replaced existing accounts and budgets: yes</p>
             <% end %>
             <% if import.failed? && import.error_message.present? %>
               <p class="text-xs text-destructive mt-1"><%= import.error_message %></p>

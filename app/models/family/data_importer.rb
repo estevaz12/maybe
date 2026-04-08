@@ -2,6 +2,9 @@ require "zip"
 require "stringio"
 
 class Family::DataImporter
+  ImportError = Class.new(StandardError)
+
+  include FinancialRestore
   Result = Struct.new(:success, :error_message, keyword_init: true) do
     def self.ok
       new(success: true, error_message: nil)
@@ -12,8 +15,6 @@ class Family::DataImporter
     end
   end
 
-  ImportError = Class.new(StandardError)
-
   def initialize(family)
     @family = family
     @category_id_map = {}
@@ -22,8 +23,10 @@ class Family::DataImporter
   end
 
   # @param io [IO, StringIO] readable zip bytes
-  # @param replace_rules [Boolean]
-  def import_from_zip_io(io, replace_rules: false)
+  # @param replace_rules [Boolean] only used when import_scope is "rules"
+  # @param replace_financial_data [Boolean] only for import_scope "full"; deletes accounts/budgets before importing Account rows
+  # @param import_scope [String] "full" (all NDJSON-supported data), "categories", "rules", or "monthly_planning"
+  def import_from_zip_io(io, replace_rules: false, replace_financial_data: false, import_scope: "rules")
     io.rewind if io.respond_to?(:rewind)
     buffer = io.respond_to?(:read) ? io.read : io.to_s
     return Result.fail("File is empty") if buffer.blank?
@@ -35,7 +38,12 @@ class Family::DataImporter
 
     ndjson = zip_file.read(entry)
     zip_file.close
-    import_from_ndjson(ndjson, replace_rules: replace_rules)
+    import_from_ndjson(
+      ndjson,
+      replace_rules: replace_rules,
+      replace_financial_data: replace_financial_data,
+      import_scope: import_scope
+    )
   rescue Zip::Error
     Result.fail("Invalid or corrupted zip file")
   rescue JSON::ParserError => e
@@ -50,7 +58,7 @@ class Family::DataImporter
 
   private
 
-    def import_from_ndjson(ndjson, replace_rules:)
+    def import_from_ndjson(ndjson, replace_rules:, replace_financial_data:, import_scope:)
       records_by_type = Hash.new { |h, k| h[k] = [] }
       ndjson.each_line do |line|
         line = line.strip
@@ -61,10 +69,34 @@ class Family::DataImporter
       end
 
       ActiveRecord::Base.transaction do
-        import_categories(records_by_type["Category"] || [])
-        import_tags(records_by_type["Tag"] || [])
-        import_merchants(records_by_type["Merchant"] || [])
-        import_rules(records_by_type["Rule"] || [], replace_rules: replace_rules)
+        case import_scope.to_s
+        when "categories"
+          import_categories(records_by_type["Category"] || [])
+        when "rules"
+          import_categories(records_by_type["Category"] || [])
+          import_tags(records_by_type["Tag"] || [])
+          import_merchants(records_by_type["Merchant"] || [])
+          import_rules(records_by_type["Rule"] || [], replace_rules: replace_rules)
+        when "monthly_planning"
+          cats = records_by_type["Category"] || []
+          snaps = records_by_type["MonthlyPlanningSnapshot"] || []
+          if cats.empty? && snaps.any?
+            raise ImportError,
+              "This zip has no category data. Use a full Maybe data export so category IDs in snapshots can be remapped."
+          end
+
+          import_categories(cats)
+          import_family_monthly_planning_setting(records_by_type["FamilyMonthlyPlanningSetting"])
+          import_monthly_planning_snapshots(snaps)
+        when "full"
+          import_full_scope(
+            records_by_type,
+            replace_rules: replace_rules,
+            replace_financial_data: replace_financial_data
+          )
+        else
+          raise ImportError, "Invalid import scope: #{import_scope.inspect}"
+        end
       end
 
       Result.ok
@@ -218,5 +250,80 @@ class Family::DataImporter
       else
         str
       end
+    end
+
+    def import_family_monthly_planning_setting(datas)
+      data = Array(datas).first&.with_indifferent_access
+      return if data.blank?
+
+      setting = @family.family_monthly_planning_setting || @family.build_family_monthly_planning_setting
+      setting.assign_attributes(
+        first_root_category_id: remap_category_fk(data[:first_root_category_id]),
+        second_root_category_id: remap_category_fk(data[:second_root_category_id]),
+        run_rate_root_category_id: remap_category_fk(data[:run_rate_root_category_id])
+      )
+      setting.save!
+    end
+
+    def import_monthly_planning_snapshots(datas)
+      return if datas.empty?
+
+      @family.monthly_planning_snapshots.delete_all
+
+      datas.each do |raw|
+        data = raw.with_indifferent_access
+        ref = parse_snapshot_reference_month(data[:reference_month])
+        next if ref.blank?
+
+        inputs = deep_remap_category_uuids(data[:inputs].presence || {})
+        outputs = deep_remap_category_uuids(data[:outputs].presence || {})
+        @family.monthly_planning_snapshots.create!(
+          reference_month: ref,
+          inputs: inputs,
+          outputs: outputs
+        )
+      end
+    end
+
+    def parse_snapshot_reference_month(value)
+      return nil if value.blank?
+
+      Date.iso8601(value.to_s).beginning_of_month
+    end
+
+    def remap_category_fk(id)
+      return nil if id.blank?
+
+      str = id.to_s
+      return nil unless uuid_string?(str)
+
+      @category_id_map[str] || nil
+    end
+
+    def deep_remap_category_uuids(obj)
+      case obj
+      when Hash
+        obj.each_with_object({}) do |(k, v), out|
+          nk = remap_uuid_hash_key(k)
+          out[nk] = deep_remap_category_uuids(v)
+        end
+      when Array
+        obj.map { |e| deep_remap_category_uuids(e) }
+      when String
+        uuid_string?(obj) && @category_id_map[obj] ? @category_id_map[obj].to_s : obj
+      else
+        obj
+      end
+    end
+
+    def remap_uuid_hash_key(key)
+      ks = key.to_s
+      return key unless uuid_string?(ks)
+
+      (@category_id_map[ks] || ks).to_s
+    end
+
+    def uuid_string?(str)
+      str.to_s.match?(/\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z/i)
     end
 end
