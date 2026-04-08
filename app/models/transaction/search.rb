@@ -93,9 +93,10 @@ class Transaction::Search
 
       query = query.left_joins(:category).where(
         "categories.name IN (?) OR (
-        categories.id IS NULL AND (transactions.kind NOT IN (#{Transaction.sql_excluded_analytics_kinds_in_list}))
+        categories.id IS NULL AND (transactions.kind NOT IN (?))
       )",
-        categories
+        categories,
+        Transaction::EXCLUDED_ANALYTICS_KINDS
       )
 
       if categories.exclude?("Uncategorized")
