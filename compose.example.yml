@@ -19,6 +19,9 @@
 #
 # https://github.com/maybe-finance/maybe/blob/main/docs/hosting/docker.md
 #
+# GHCR tags: CI publishes :latest for main and :dev for the dev branch. Override with MAYBE_IMAGE_TAG.
+# pull_policy: always helps Coolify/Docker pick up new digests when redeploying a moving tag.
+#
 # Troubleshooting:
 # ----------------
 #
@@ -41,12 +44,13 @@ x-rails-env: &rails_env
   DB_HOST: db
   DB_PORT: 5432
   REDIS_URL: redis://redis:6379/1
-# NOTE: enabling OpenAI will incur costs when you use AI-related features in the app (chat, rules).  Make sure you have set appropriate spend limits on your account before adding this.
+  # NOTE: enabling OpenAI will incur costs when you use AI-related features in the app (chat, rules).  Make sure you have set appropriate spend limits on your account before adding this.
   OPENAI_ACCESS_TOKEN: ${OPENAI_ACCESS_TOKEN}
 
 services:
   web:
-    image: ghcr.io/maybe-finance/maybe:latest
+    image: ghcr.io/maybe-finance/maybe:${MAYBE_IMAGE_TAG:-latest}
+    pull_policy: always
     volumes:
       - app-storage:/rails/storage
     ports:
@@ -63,7 +67,8 @@ services:
       - maybe_net
 
   worker:
-    image: ghcr.io/maybe-finance/maybe:latest
+    image: ghcr.io/maybe-finance/maybe:${MAYBE_IMAGE_TAG:-latest}
+    pull_policy: always
     command: bundle exec sidekiq
     restart: unless-stopped
     depends_on:
@@ -82,7 +87,7 @@ services:
     environment:
       <<: *db_env
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB" ]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -95,7 +100,7 @@ services:
     volumes:
       - redis-data:/data
     healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5

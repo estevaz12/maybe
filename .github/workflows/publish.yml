@@ -2,19 +2,11 @@ name: Publish Docker image
 
 on:
   workflow_call:
-  # workflow_dispatch:
-  #   inputs:
-  #     ref:
-  #       description: "Git ref (tag or commit SHA) to build"
-  #       required: true
-  #       type: string
-  #       default: "main"
-  # push:
-  #   tags:
-  #     - "v*"
-  #   branches:
-  #     - main
-  #     - dev
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - dev
 
 env:
   REGISTRY: ghcr.io
@@ -43,7 +35,7 @@ jobs:
       - name: Check out the repo
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.ref || github.ref }}
+          ref: ${{ github.ref }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3

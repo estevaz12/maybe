@@ -19,6 +19,12 @@
 #
 # https://github.com/maybe-finance/maybe/blob/main/docs/hosting/docker.md
 #
+# Coolify / GHCR:
+# - GitHub Actions publishes :dev (pushes to dev) and :latest (pushes to main).
+# - Default MAYBE_IMAGE_TAG=dev matches a Coolify resource that tracks the dev branch.
+# - For a resource tracking main, set MAYBE_IMAGE_TAG=latest in Coolify (or .env next to this file).
+# - Use pre-built GHCR images; pull_policy below avoids stale :dev/:latest digests on redeploy.
+#
 # Troubleshooting:
 # ----------------
 #
@@ -46,7 +52,8 @@ x-rails-env: &rails_env
 
 services:
   web:
-    image: ghcr.io/estevaz12/maybe:dev
+    image: ghcr.io/estevaz12/maybe:${MAYBE_IMAGE_TAG:-dev}
+    pull_policy: always
     volumes:
       - app-storage:/rails/storage
     ports:
@@ -63,7 +70,8 @@ services:
       - maybe_net
 
   worker:
-    image: ghcr.io/estevaz12/maybe:dev
+    image: ghcr.io/estevaz12/maybe:${MAYBE_IMAGE_TAG:-dev}
+    pull_policy: always
     volumes:
       - app-storage:/rails/storage
     command: bundle exec sidekiq
