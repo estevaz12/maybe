@@ -104,7 +104,7 @@ docker compose up
 
 This will pull our official Docker image and start the app. You will see logs in your terminal.
 
-Open your browser, and navigate to `http://localhost:3000`.
+Open your browser, and navigate to `http://localhost:3001`.
 
 If everything is working, you will see the Maybe login screen.
 
@@ -131,7 +131,7 @@ docker compose ls
 
 ### Step 7: Enjoy!
 
-Your app is now set up. You can visit it at `http://localhost:3000` in your browser.
+Your app is now set up. You can visit it at `http://localhost:3001` in your browser.
 
 If you find bugs or have a feature request, be sure to read through our [contributing guide here](https://github.com/maybe-finance/maybe/wiki/How-to-Contribute-Effectively-to-this-Project).
 

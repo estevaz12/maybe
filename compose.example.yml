@@ -53,8 +53,9 @@ services:
     pull_policy: always
     volumes:
       - app-storage:/rails/storage
+    # Host 3001 avoids clashing with local Rails on 3000.
     ports:
-      - 3000:3000
+      - 3001:3000
     restart: unless-stopped
     environment:
       <<: *rails_env
